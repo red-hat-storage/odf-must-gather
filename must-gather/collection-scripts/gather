@@ -5,23 +5,42 @@ mkdir -p ${BASE_COLLECTION_PATH}
 # Command line argument
 SINCE_TIME=$1
 
+#delta time function
+delta_time() {
+  end=$(date +%s)
+  totalTime=$((end-$1))
+  printf "total time taken by collection was %s seconds" "${totalTime}" >> ${BASE_COLLECTION_PATH}/$2.log 2>&1
+}
+
+start_total=$(date +%s)
 # timestamp for starting of the script
 START_TIME=$(date +%r)
 start=$(date +%s)
 printf "collection started at: %s \n" "${START_TIME}" >> ${BASE_COLLECTION_PATH}/gather-debug.log 2>&1
 
 # Call pre-install.sh
+start=$(date +%s)
 pre-install.sh
+delta_time start pre_install_time
 
 # Call other gather scripts
+start=$(date +%s)
 gather_namespaced_resources ${BASE_COLLECTION_PATH} "${SINCE_TIME}"
+delta_time start gather_namespaced_resources_time
+
+start=$(date +%s)
 gather_clusterscoped_resources ${BASE_COLLECTION_PATH} "${SINCE_TIME}"
+delta_time start gather_clusterscoped_resources_time
+
+start=$(date +%s)
 gather_noobaa_resources ${BASE_COLLECTION_PATH} "${SINCE_TIME}"
+delta_time start gather_noobaa_resources_time
 
 storageClusterPresent=$(oc get storagecluster -n openshift-storage -o go-template='{{range .items}}{{.metadata.name}}{{"\n"}}{{end}}')
 externalStorageClusterPresent=$(oc get storagecluster -n openshift-storage -o go-template='{{range .items}}{{.spec.externalStorage.enable}}{{"\n"}}{{end}}')
 reconcileStrategy=$(oc get storagecluster -n openshift-storage -o go-template='{{range .items}}{{.spec.multiCloudGateway.reconcileStrategy}}{{"\n"}}{{end}}')
 
+start=$(date +%s)
 if [ "${externalStorageClusterPresent}" == true ]; then
     echo "Collecting limited ceph logs since external cluster is present" | tee -a  "${BASE_COLLECTION_PATH}"/gather-debug.log
     gather_common_ceph_resources "${BASE_COLLECTION_PATH}" "${SINCE_TIME}"
@@ -33,9 +52,12 @@ else
     echo "Collecting entire ceph logs" | tee -a "${BASE_COLLECTION_PATH}"/gather-debug.log
     gather_ceph_resources ${BASE_COLLECTION_PATH} "${SINCE_TIME}"
 fi
+delta_time start gather_ceph_resources_time
 
 # Call post-uninstall.sh
+start=$(date +%s)
 post-uninstall.sh
+delta_time start post_uninstall_time
 
 # timestamp for ending of the script
 END_TIME=$(date +%r)
@@ -48,4 +70,6 @@ totalTime=$((end-start))
 
 } >> ${BASE_COLLECTION_PATH}/gather-debug.log 2>&1
 find "${BASE_COLLECTION_PATH}" -empty -delete >> ${BASE_COLLECTION_PATH}/gather-debug.log 2>&1
+
+delta_time start_total total_time
 exit 0
