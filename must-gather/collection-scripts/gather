@@ -69,7 +69,14 @@ totalTime=$((end-start))
     echo "deleting empty files"
 
 } >> ${BASE_COLLECTION_PATH}/gather-debug.log 2>&1
-find "${BASE_COLLECTION_PATH}" -empty -delete >> ${BASE_COLLECTION_PATH}/gather-debug.log 2>&1
 
 delta_time start_total total_time
+find "${BASE_COLLECTION_PATH}" -empty -delete >> ${BASE_COLLECTION_PATH}/gather-debug.log 2>&1
+find "${BASE_COLLECTION_PATH}" -empty -delete >> ${BASE_COLLECTION_PATH}/pre_install_time.log 2>&1
+find "${BASE_COLLECTION_PATH}" -empty -delete >> ${BASE_COLLECTION_PATH}/gather_namespaced_resources_time.log 2>&1
+find "${BASE_COLLECTION_PATH}" -empty -delete >> ${BASE_COLLECTION_PATH}/gather_noobaa_resources_time.log 2>&1
+find "${BASE_COLLECTION_PATH}" -empty -delete >> ${BASE_COLLECTION_PATH}/gather_ceph_resources_time.log 2>&1
+find "${BASE_COLLECTION_PATH}" -empty -delete >> ${BASE_COLLECTION_PATH}/gather_clusterscoped_resources_time.log 2>&1
+find "${BASE_COLLECTION_PATH}" -empty -delete >> ${BASE_COLLECTION_PATH}/post_uninstall_time.log 2>&1
+find "${BASE_COLLECTION_PATH}" -empty -delete >> ${BASE_COLLECTION_PATH}/total_time.log 2>&1
 exit 0
