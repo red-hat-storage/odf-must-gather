@@ -429,7 +429,7 @@ CMDS
         mkdir -p "${COREDUMP_OUTPUT_DIR}"
         volume_collection &
         pids_log+=($!)
-        crash_collection &
+        crash_core_collection &
         pids_log+=($!)
         journal_collection &
         pids_log+=($!)
