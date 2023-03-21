@@ -77,6 +77,21 @@ cleanup() {
   fi
 }
 
+# Delete all openshift-must-gather namespaces
+delete_mg_namespaces () {
+    namespaces=$(oc get namespaces -o name)
+    namespace_list=$(echo $namespaces | tr ";" "\n")
+    for namespace in ${namespace_list}; do
+        if [[ "$namespace" == *"openshift-must-gather"* ]]; then
+            echo "Delete $namespace namespace!"            
+            oc delete --all pods --force -n ${namespace/'namespace/'}
+            oc delete project ${namespace/'namespace/'}
+        fi
+    done
+}
+
+
+delete_mg_namespaces
 cleanup
 deploy
 labels
