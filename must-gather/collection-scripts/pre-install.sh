@@ -15,7 +15,7 @@ apply_helper_pod() {
 }
 
 # Add Ready nodes to the list
-nodes=$(oc get nodes -l cluster.ocs.openshift.io/openshift-storage='' --no-headers | awk '/\yReady\y/{print $1}')
+nodes=$(oc get nodes --no-headers | awk '/\yworker\y/{print $1}')
 
 # storing storagecluster name
 storageClusterPresent=$(oc get storagecluster -n openshift-storage -o go-template='{{range .items}}{{.metadata.name}}{{"\n"}}{{end}}')

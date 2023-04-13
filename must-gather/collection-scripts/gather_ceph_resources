@@ -383,24 +383,24 @@ for ns in $namespaces; do
     done
 
     # Add Ready nodes to the list
-    nodes=$(oc get nodes -l cluster.ocs.openshift.io/openshift-storage='' --no-headers | awk '/\yReady\y/{print $1}')
+    nodes=$(oc get nodes --no-headers | awk '/\yworker\y/{print $1}')
 
     # Collecting Ceph daemon logs
     ceph_daemon_log_collection(){
         printf "collecting Ceph daemon logs from node %s \n"  "${node}" | tee -a  "${BASE_COLLECTION_PATH}"/gather-debug.log
-        oc rsync -n "${ns}" "$(oc get pods -n "${ns}"| grep "${node//./}-debug"| awk '{print $1}')":/host/var/lib/rook/openshift-storage/log "${CEPH_DAEMON_LOG_OUTPUT_DIR}"
+        oc rsync -n "${ns}" "$(oc get pods -n "${ns}" --no-headers | grep "${node//./}-debug"| awk '{print $1}')":/host/var/lib/rook/openshift-storage/log "${CEPH_DAEMON_LOG_OUTPUT_DIR}"
     }
 
     crash_core_collection(){
         printf "collecting crash core dump from node %s \n" "${node}" | tee -a  "${BASE_COLLECTION_PATH}"/gather-debug.log
-        oc rsync -n "${ns}" "$(oc get pods -n "${ns}" -l "${node//./}"-debug='ready' --no-headers | awk '{print $1}')":/host/var/lib/rook/openshift-storage/crash/ "${CRASH_OUTPUT_DIR}"
-        oc rsync -n "${ns}" "$(oc get pods -n "${ns}" -l "${node//./}"-debug='ready' --no-headers | awk '{print $1}')":/host/var/lib/systemd/coredump/ "${COREDUMP_OUTPUT_DIR}"
+        oc rsync -n "${ns}" "$(oc get pods -n "${ns}" --no-headers  | grep "${node//./}"-debug | awk '{print $1}')":/host/var/lib/rook/openshift-storage/crash/ "${CRASH_OUTPUT_DIR}"
+        oc rsync -n "${ns}" "$(oc get pods -n "${ns}" --no-headers | grep "${node//./}"-debug | awk '{print $1}')":/host/var/lib/systemd/coredump/ "${COREDUMP_OUTPUT_DIR}"
     }
 
     journal_collection(){
         printf "collecting journal logs from node %s \n" "${node}" | tee -a  "${BASE_COLLECTION_PATH}"/gather-debug.log
-        oc rsync -n "${ns}" "$(oc get pods -n "${ns}" -l "${node//./}"-debug='ready' --no-headers | awk '{print $1}')":/host/var/log/journal_"${node}".gz "${JOURNAL_OUTPUT_DIR}"
-        oc rsync -n "${ns}" "$(oc get pods -n "${ns}" -l "${node//./}"-debug='ready' --no-headers | awk '{print $1}')":/host/var/log/kernel_"${node}".gz "${KERNEL_OUTPUT_DIR}"
+        oc rsync -n "${ns}" "$(oc get pods -n "${ns}" --no-headers | grep "${node//./}"-debug | awk '{print $1}')":/host/var/log/journal_"${node}".gz "${JOURNAL_OUTPUT_DIR}"
+        oc rsync -n "${ns}" "$(oc get pods -n "${ns}" --no-headers  | grep "${node//./}"-debug | awk '{print $1}')":/host/var/log/kernel_"${node}".gz "${KERNEL_OUTPUT_DIR}"
     }  
     
     for node in ${nodes}; do
