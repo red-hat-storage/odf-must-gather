@@ -1,0 +1,54 @@
+#!/usr/bin/env bash
+
+# Expect base collection path as an exported variable
+# If it is not defined, use PWD instead
+BASE_COLLECTION_PATH=${BASE_COLLECTION_PATH:-"$(pwd)"}
+
+INSTALL_NAMESPACES=$(oc get storagecluster -A --no-headers | awk '{print $1}')
+
+# collection path for OC commands
+mkdir -p "${BASE_COLLECTION_PATH}/odf-provider-cluster/oc_output/"
+
+# Command List
+commands_get=()
+commands_get+=("storageclassrequests")
+commands_get+=("storageconsumers")
+
+# YAML List
+oc_yamls=()
+oc_yamls+=("storageclassrequests")
+oc_yamls+=("storageconsumers")
+
+# OC desc List
+commands_desc=()
+commands_desc+=("storageconsumer")
+commands_desc+=("storageclassrequest")
+
+for INSTALL_NAMESPACE in  $INSTALL_NAMESPACES ; do
+     dbglog "collecting dump of namespace ${INSTALL_NAMESPACE}"
+     { oc adm --dest-dir="${BASE_COLLECTION_PATH}" inspect ns/"${INSTALL_NAMESPACE}" --"${SINCE_TIME}" 2>&1; } | dbglog
+     dbglog "collecting dump of clusterresourceversion"
+     for oc_yaml in "${oc_yamls[@]}"; do
+          # shellcheck disable=SC2129
+          { oc adm --dest-dir="${BASE_COLLECTION_PATH}" inspect "${oc_yaml}" -n "${INSTALL_NAMESPACE}" --"${SINCE_TIME}" 2>&1; } | dbglog
+     done
+
+     # Create the dir for oc_output
+     mkdir -p "${BASE_COLLECTION_PATH}/new_namespaces/${INSTALL_NAMESPACE}/oc_output/"
+
+     # Run the Collection of Resources to list
+     for command_get in "${commands_get[@]}"; do
+          dbglog "collecting oc command ${command_get}"
+          COMMAND_OUTPUT_FILE=${BASE_COLLECTION_PATH}/new_namespaces/${INSTALL_NAMESPACE}/oc_output/${command_get// /_}
+          # shellcheck disable=SC2086
+          { oc get ${command_get} -n ${INSTALL_NAMESPACE}; } >>"${COMMAND_OUTPUT_FILE}"
+     done
+
+     # Run the Collection of OC desc commands
+     for command_desc in "${commands_desc[@]}"; do
+          dbglog "collecting oc describe command ${command_desc}"
+          COMMAND_OUTPUT_FILE=${BASE_COLLECTION_PATH}/new_namespaces/${INSTALL_NAMESPACE}/oc_output/${command_desc// /_}
+          # shellcheck disable=SC2086
+          { oc describe ${command_desc} -n ${INSTALL_NAMESPACE}; } >>"${COMMAND_OUTPUT_FILE}"
+     done
+done
