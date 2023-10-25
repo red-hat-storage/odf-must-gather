@@ -22,6 +22,7 @@ pre-install.sh ${BASE_COLLECTION_PATH}
 gather_namespaced_resources ${BASE_COLLECTION_PATH}
 gather_clusterscoped_resources ${BASE_COLLECTION_PATH}
 gather_noobaa_resources ${BASE_COLLECTION_PATH}
+gather_odf_client ${BASE_COLLECTION_PATH}
 
 namespace=$(oc get deploy --all-namespaces -o go-template --template='{{range .items}}{{if .metadata.labels}}{{printf "%s %v" .metadata.namespace (index .metadata.labels "olm.owner")}} {{printf "\n"}}{{end}}{{end}}' | grep ocs-operator | awk '{print $1}' | uniq)
 storageClusterPresent=$(oc get storagecluster -n "${namespace}" -o go-template='{{range .items}}{{.metadata.name}}{{"\n"}}{{end}}')

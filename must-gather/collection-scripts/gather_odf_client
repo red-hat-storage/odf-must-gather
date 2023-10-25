@@ -1,0 +1,111 @@
+#!/usr/bin/env bash
+
+# Expect base collection path as an exported variable
+# If it is not defined, use PWD instead
+BASE_COLLECTION_PATH=${BASE_COLLECTION_PATH:-"$(pwd)"}
+
+
+STORAGE_CLIENT_NAMESPACE=$(oc get storageclients -A --no-headers | awk '{print $1}')
+CLIENT_OPERATOR_NAMESPACE=$(oc get subscriptions -A --no-headers | grep ocs-client-operator | awk '{print $1}')
+
+# collection path for OC commands
+mkdir -p "${BASE_COLLECTION_PATH}/odf-client/oc_output/"
+
+# Command List
+commands_get=()
+commands_get+=("pods")
+commands_get+=("deployments")
+commands_get+=("secrets")
+commands_get+=("configmaps")
+commands_get+=("cronjobs")
+commands_get+=("subscription")
+
+client_commands_get=()
+client_commands_get+=("storageclients")
+client_commands_get+=("storageclassclaims")
+
+# YAML List
+oc_yamls=()
+oc_yamls+=("pods")
+oc_yamls+=("deployments")
+oc_yamls+=("secrets")
+oc_yamls+=("configmaps")
+oc_yamls+=("cronjobs")
+oc_yamls+=("subscription")
+
+client_oc_yamls=()
+client_oc_yamls+=("storageclients")
+client_oc_yamls+=("storageclassclaims")
+
+# OC desc List
+commands_desc=()
+commands_desc+=("pods")
+commands_desc+=("deployments")
+commands_desc+=("secrets")
+commands_desc+=("configmaps")
+commands_desc+=("cronjobs")
+commands_desc+=("subscription")
+commands_desc+=("storageclients")
+
+client_commands_desc=()
+client_commands_desc+=("storageclients")
+client_commands_desc+=("storageclassclaims")
+
+
+for INSTALL_NAMESPACE in  $CLIENT_OPERATOR_NAMESPACE ; do
+     dbglog "collecting dump of namespace ${INSTALL_NAMESPACE}"
+     { oc adm --dest-dir="${BASE_COLLECTION_PATH}" inspect ns/"${INSTALL_NAMESPACE}" --"${SINCE_TIME}" 2>&1; } | dbglog
+     # Run the Collection of oc yaml outputs
+     for oc_yaml in "${oc_yamls[@]}"; do
+          # shellcheck disable=SC2129
+          { oc adm --dest-dir="${BASE_COLLECTION_PATH}" inspect "${oc_yaml}" -n "${INSTALL_NAMESPACE}" --"${SINCE_TIME}" 2>&1; } | dbglog
+     done
+
+     # Create the dir for oc_output
+     mkdir -p "${BASE_COLLECTION_PATH}/namespaces/${INSTALL_NAMESPACE}/oc_output/"
+
+     # Run the Collection of Resources to list
+     for command_get in "${commands_get[@]}"; do
+          dbglog "collecting oc command ${command_get}"
+          COMMAND_OUTPUT_FILE=${BASE_COLLECTION_PATH}/namespaces/${INSTALL_NAMESPACE}/oc_output/${command_get// /_}
+          # shellcheck disable=SC2086
+          { oc get ${command_get} -n ${INSTALL_NAMESPACE}; } >>"${COMMAND_OUTPUT_FILE}"
+     done
+
+     # Run the Collection of OC desc commands
+     for command_desc in "${commands_desc[@]}"; do
+          dbglog "collecting oc describe command ${command_desc}"
+          COMMAND_OUTPUT_FILE=${BASE_COLLECTION_PATH}/namespaces/${INSTALL_NAMESPACE}/oc_output/${command_desc// /_}
+          # shellcheck disable=SC2086
+          { oc describe ${command_desc} -n ${INSTALL_NAMESPACE}; } >>"${COMMAND_OUTPUT_FILE}" 
+     done
+done
+
+for INSTALL_NAMESPACE in  $STORAGE_CLIENT_NAMESPACE ; do
+     dbglog "collecting dump of namespace ${INSTALL_NAMESPACE}"
+     { oc adm --dest-dir="${BASE_COLLECTION_PATH}" inspect ns/"${INSTALL_NAMESPACE}" --"${SINCE_TIME}" 2>&1; } | dbglog
+     # Run the Collection of oc yaml outputs
+     for oc_yaml in "${client_oc_yamls[@]}"; do
+          # shellcheck disable=SC2129
+          { oc adm --dest-dir="${BASE_COLLECTION_PATH}" inspect "${oc_yaml}" -n "${INSTALL_NAMESPACE}" --"${SINCE_TIME}" 2>&1; } | dbglog
+     done
+
+     # Create the dir for oc_output
+     mkdir -p "${BASE_COLLECTION_PATH}/namespaces/${INSTALL_NAMESPACE}/oc_output/"
+
+     # Run the Collection of Resources to list
+     for command_get in "${client_commands_get[@]}"; do
+          dbglog "collecting oc command ${command_get}"
+          COMMAND_OUTPUT_FILE=${BASE_COLLECTION_PATH}/namespaces/${INSTALL_NAMESPACE}/oc_output/${command_get// /_}
+          # shellcheck disable=SC2086
+          { oc get ${command_get} -n ${INSTALL_NAMESPACE}; } >>"${COMMAND_OUTPUT_FILE}"
+     done
+
+     # Run the Collection of OC desc commands
+     for command_desc in "${client_commands_desc[@]}"; do
+          dbglog "collecting oc describe command ${command_desc}"
+          COMMAND_OUTPUT_FILE=${BASE_COLLECTION_PATH}/namespaces/${INSTALL_NAMESPACE}/oc_output/${command_desc// /_}
+          # shellcheck disable=SC2086
+          { oc describe ${command_desc} -n ${INSTALL_NAMESPACE}; } >>"${COMMAND_OUTPUT_FILE}" 
+     done
+done
