@@ -18,6 +18,8 @@ jobs:
 
       - name: Run ShellCheck
         uses: ludeeus/action-shellcheck@master
+        with:
+          scandir: './collection-scripts'
         env:
           SHELLCHECK_OPTS: -e SC2181
   
@@ -34,4 +36,5 @@ jobs:
           check_filenames: true
           check_hidden: true
           ignore_words_list: xdescribe,contails,shouldnot
+          path: collection-scripts
 

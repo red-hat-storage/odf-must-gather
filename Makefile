@@ -1,18 +1,51 @@
-IMAGE_REGISTRY ?= "quay.io"
-REGISTRY_NAMESPACE ?= "ocs-dev"
-IMAGE_TAG ?= "latest"
-MUST_GATHER_IMAGE_NAME ?= "ocs-must-gather"
+all: images
+.PHONY: all local docker-rancher-build docker-engine-build
 
-MUST_GATHER_IMAGE_NAME ?= $(IMAGE_REGISTRY)/$(REGISTRY_NAMESPACE)/$(MUST_GATHER_IMAGE_NAME):$(IMAGE_TAG)
+# Include the library makefile
+include $(addprefix ./vendor/github.com/openshift/build-machinery-go/make/, \
+	golang.mk \
+	targets/openshift/images.mk \
+)
 
-OCS_MUST_GATHER_DIR ?= "${OCS_MUST_GATHER_DIR:-ocs-must-gather}"
-OCP_MUST_GATHER_DIR ?= "${OCP_MUST_GATHER_DIR:-ocp-must-gather}"
+IMAGE_REGISTRY :=registry.svc.ci.openshift.org
+IMG_TAG ?= odf-mg
 
-PLATFORM ?= "docker"
+# This will call a macro called "build-image" which will generate image specific targets based on the parameters:
+# $0 - macro name
+# $1 - target name
+# $2 - image ref
+# $3 - Dockerfile path
+# $4 - context directory for image build
+$(call build-image,odf-must-gather,$(IMAGE_REGISTRY)/ocp/4.14:odf-must-gather, ./Dockerfile,.)
 
-.PHONY: \
-	odf-must-gather 
-	
-odf-must-gather:
-	@echo "Building the ocs-must-gather image"
-	${PLATFORM} build -f must-gather/Dockerfile -t ${MUST_GATHER_IMAGE_NAME} must-gather/
+$(call verify-golang-versions,Dockerfile)
+
+docker-rancher-build:
+	docker context use rancher-desktop
+	docker build . -t $(IMG_TAG) --platform=linux/amd64
+
+docker-engine-build:
+	docker build . -t $(IMG_TAG) --platform=linux/amd64
+
+local:
+ifndef ODF_MG_TOKEN
+	@echo "ERROR: The ODF_MG_TOKEN environment variable is not set."
+	@exit 1
+endif
+
+	@echo "Logging in to the cluster with token: $(ODF_MG_TOKEN)"
+	@oc login --token=$(ODF_MG_TOKEN) --server=https://api.ci.l2s4.p1.openshiftapps.com:6443 1>/dev/null
+
+	@echo "Logging into the CI image registry..."
+	@oc registry login --registry registry.ci.openshift.org &>/dev/null
+
+	@echo "Will be using $(IMG_TAG) as the image tag, you can change this using IMG_TAG env var."
+
+	@echo "Building the image..."
+
+ifdef RANCHER
+	@make docker-rancher-build
+else
+	@make docker-engine-build
+endif
+

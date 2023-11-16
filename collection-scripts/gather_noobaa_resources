@@ -68,6 +68,7 @@ NOOBAA_POSTGRES_LABEL='noobaa-db in (postgres)'
 for pod in $(oc -n "${ns}" get pods -l "${NOOBAA_POSTGRES_LABEL}" | grep -v NAME | awk '{print $1}'); do
     dbglog "collecting noobaa db pod logs from ${ns}"
     { timeout 120 oc -n "${ns}" logs --all-containers "${pod}" &>"${LOG_DIR}"/"${pod}".log; } >>"${BASE_COLLECTION_PATH}"/gather-debug.log 2>&1
+    { timeout 120 oc -n "${ns}" cp "${pod}":/var/lib/pgsql/data/userdata/log "${LOG_DIR}"/"${pod}"/pg_log; } >>"${BASE_COLLECTION_PATH}"/gather-debug.log 2>&1
 done
 
 # Add important notifications to a notifications.txt file at the root of the noobaa collection path
