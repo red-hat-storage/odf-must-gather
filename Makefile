@@ -1,7 +1,7 @@
 all: images
 .PHONY: all local docker-rancher-build docker-engine-build
 
-# Include the library makefile
+# Include the library makefiles
 include $(addprefix ./vendor/github.com/openshift/build-machinery-go/make/, \
 	golang.mk \
 	targets/openshift/images.mk \
