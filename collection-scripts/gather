@@ -31,7 +31,7 @@ reconcileStrategy=$(oc get storagecluster -n "${namespace}" -o go-template='{{ra
 
 if [ "${externalStorageClusterPresent}" = "true" ]; then
     dbglog "Collecting limited ceph logs since external cluster is present"
-    gather_common_ceph_resources "${BASE_COLLECTION_PATH}"
+    gather_common_ceph_resources "${BASE_COLLECTION_PATH}" &
 elif [ -z "${storageClusterPresent}" ]; then
     dbglog "Skipping ceph collection as Storage Cluster is not present"
 elif [ "${reconcileStrategy}" = "standalone" ]; then
