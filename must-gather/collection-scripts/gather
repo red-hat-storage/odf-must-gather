@@ -19,22 +19,10 @@ dbglog "collection started at: ${START_TIME}"
 pre-install.sh ${BASE_COLLECTION_PATH}
 
 # Call other gather scripts
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> 7914c1e (fix code)
 gather_namespaced_resources ${BASE_COLLECTION_PATH}
 gather_clusterscoped_resources ${BASE_COLLECTION_PATH}
 gather_noobaa_resources ${BASE_COLLECTION_PATH}
 gather_odf_client ${BASE_COLLECTION_PATH}
-<<<<<<< HEAD
-=======
-gather_namespaced_resources ${BASE_COLLECTION_PATH} "${SINCE_TIME}" &
-gather_clusterscoped_resources ${BASE_COLLECTION_PATH} "${SINCE_TIME}" &
-gather_noobaa_resources ${BASE_COLLECTION_PATH} "${SINCE_TIME}" &
->>>>>>> d09b4e3 ([4.14] Running all gather scripts in background)
-=======
->>>>>>> 7914c1e (fix code)
 
 namespace=$(oc get deploy --all-namespaces -o go-template --template='{{range .items}}{{if .metadata.labels}}{{printf "%s %v" .metadata.namespace (index .metadata.labels "olm.owner")}} {{printf "\n"}}{{end}}{{end}}' | grep ocs-operator | awk '{print $1}' | uniq)
 storageClusterPresent=$(oc get storagecluster -n "${namespace}" -o go-template='{{range .items}}{{.metadata.name}}{{"\n"}}{{end}}')
@@ -43,30 +31,14 @@ reconcileStrategy=$(oc get storagecluster -n "${namespace}" -o go-template='{{ra
 
 if [ "${externalStorageClusterPresent}" = "true" ]; then
     dbglog "Collecting limited ceph logs since external cluster is present"
-<<<<<<< HEAD
-<<<<<<< HEAD
     gather_common_ceph_resources "${BASE_COLLECTION_PATH}"
-=======
-    gather_common_ceph_resources "${BASE_COLLECTION_PATH}" "${SINCE_TIME}" &
->>>>>>> d09b4e3 ([4.14] Running all gather scripts in background)
-=======
-    gather_common_ceph_resources "${BASE_COLLECTION_PATH}"
->>>>>>> 7914c1e (fix code)
 elif [ -z "${storageClusterPresent}" ]; then
     dbglog "Skipping ceph collection as Storage Cluster is not present"
 elif [ "${reconcileStrategy}" = "standalone" ]; then
     dbglog "Skipping ceph collection as this is a MCG only cluster"
 else
     dbglog "Collecting entire ceph logs"
-<<<<<<< HEAD
-<<<<<<< HEAD
     gather_ceph_resources ${BASE_COLLECTION_PATH}
-=======
-    gather_ceph_resources ${BASE_COLLECTION_PATH} "${SINCE_TIME}" &
->>>>>>> d09b4e3 ([4.14] Running all gather scripts in background)
-=======
-    gather_ceph_resources ${BASE_COLLECTION_PATH}
->>>>>>> 7914c1e (fix code)
 fi
 
 # Call post-uninstall.sh
