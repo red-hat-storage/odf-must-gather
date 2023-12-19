@@ -1,5 +1,110 @@
 #!/usr/bin/env bash
 
+# Predefined operating modes
+dr=false
+pc=false
+nooba=false
+ceph=false
+cephlogs=false
+namespaced=false
+clusterscoped=false
+help=false
+default=true
+
+# Store PIDs of all the subprocesses
+pids=()
+
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+    -d | --dr)
+        dr=true
+        default=false
+        shift
+        ;;
+    -p | --provider*)
+        pc=true
+        default=false
+        shift
+        ;;
+    -n | --nooba)
+        nooba=true
+        default=false
+        shift
+        ;;
+    -c | --ceph)
+        ceph=true
+        default=false
+        shift
+        ;;
+    -cl | --ceph-logs)
+        cephlogs=true
+        default=false
+        shift
+        ;;
+    -ns | --namespaced)
+        namespaced=true
+        default=false
+        shift
+        ;;
+    -cs | --clusterscoped)
+        clusterscoped=true
+        default=false
+        shift
+        ;;
+    -h | --help)
+        help=true
+        default=false
+        shift
+        ;;
+    *)
+        # Break the loop if the argument doesn't start with -
+        # If it starts with a - and didn't match above
+        # it is an unsupported option and we error out.
+        if [[ "$1" == -* ]]; then
+            # Invalid/unsupported arg
+            echo "Error: Unknown option $1. See help, $ $0 -h." >&2
+            exit 1
+        else
+            # Didn't start with -, not our business
+            # breaking here helps preserve additional args
+            break
+        fi
+        ;;
+    esac
+done
+
+# Function to print help
+display_help() {
+    cat <<EOF
+Usage: $0 [OPTIONS]
+
+Options:
+  -d,  --dr                 Collect DR logs
+  -p,  --provider           Collect logs for provider/consumer cluster
+  -n,  --nooba              Collect nooba logs
+  -c,  --ceph               Collect ceph commands and pod logs
+  -cl, --ceph-logs          Collect ceph daemon, kernel, journal logs and crash reports
+  -ns, --namespaced         Collect namespaced resources
+  -cs, --clusterscoped      Collect clusterscoped resources
+  -h,  --help               Print this help message
+
+Description:
+  ODF must-gather can run in modular mode and can collect JUST
+  the resources you require to collect. You can use the args
+  listed above to achieve that. If no arg is supplied the script
+  will run in FULL collection mode and will gather all the resources
+  from your cluster. This might take longer on some environments.
+
+  Note: Provide each arg separately and do not chain them like:
+        $ $0 -dpnc          # Wrong
+        $ $0 -d -p -n -c    # Correct
+
+Examples:
+  $ $0 -d -n --ceph         # Collect DR, nooba and ceph logs only.
+  $ $0 -h                   # Print help
+EOF
+}
+
 export BASE_COLLECTION_PATH="must-gather"
 mkdir -p ${BASE_COLLECTION_PATH}
 
@@ -18,26 +123,74 @@ dbglog "collection started at: ${START_TIME}"
 # Call pre-install.sh, see commit msg
 pre-install.sh ${BASE_COLLECTION_PATH}
 
-# Call other gather scripts
-gather_namespaced_resources ${BASE_COLLECTION_PATH}
-gather_clusterscoped_resources ${BASE_COLLECTION_PATH}
-gather_noobaa_resources ${BASE_COLLECTION_PATH}
+# If help is requested, we print it out and do nothing else (exit 0)
+if [ "$help" = true ]; then
+    display_help && exit 0
+fi
 
-namespace=$(oc get deploy --all-namespaces -o go-template --template='{{range .items}}{{if .metadata.labels}}{{printf "%s %v" .metadata.namespace (index .metadata.labels "olm.owner")}} {{printf "\n"}}{{end}}{{end}}' | grep ocs-operator | awk '{print $1}' | uniq)
-storageClusterPresent=$(oc get storagecluster -n "${namespace}" -o go-template='{{range .items}}{{.metadata.name}}{{"\n"}}{{end}}')
-externalStorageClusterPresent=$(oc get storagecluster -n "${namespace}" -o go-template='{{range .items}}{{.spec.externalStorage.enable}}{{"\n"}}{{end}}')
-reconcileStrategy=$(oc get storagecluster -n "${namespace}" -o go-template='{{range .items}}{{.spec.multiCloudGateway.reconcileStrategy}}{{"\n"}}{{end}}')
+# Process the options
+if [ "$dr" == true ]; then
+    echo "Collect DR logs..."
+    gather_dr_resources ${BASE_COLLECTION_PATH} &
+    pids+=($!)
+fi
 
-if [ "${externalStorageClusterPresent}" = "true" ]; then
-    dbglog "Collecting limited ceph logs since external cluster is present"
-    gather_common_ceph_resources "${BASE_COLLECTION_PATH}"
-elif [ -z "${storageClusterPresent}" ]; then
-    dbglog "Skipping ceph collection as Storage Cluster is not present"
-elif [ "${reconcileStrategy}" = "standalone" ]; then
-    dbglog "Skipping ceph collection as this is a MCG only cluster"
-else
-    dbglog "Collecting entire ceph logs"
-    gather_ceph_resources ${BASE_COLLECTION_PATH}
+if [ "$pc" == true ]; then
+    echo "Collect Provider/Consumer logs..."
+    gather_odf_client ${BASE_COLLECTION_PATH} &
+    pids+=($!)
+fi
+
+if [ "$nooba" == true ]; then
+    echo "Collect Nooba logs..."
+    gather_noobaa_resources ${BASE_COLLECTION_PATH} &
+    pids+=($!)
+fi
+
+if [ "$ceph" == true ]; then
+    echo "Collect ceph pod logs..."
+    gather_ceph_pod_logs &
+    pids+=($!)
+fi
+
+if [ "$cephlogs" == true ]; then
+    echo "Collect ceph daemon logs..."
+    gather_ceph_logs ${BASE_COLLECTION_PATH} &
+    pids+=($!)
+fi
+
+if [ "$namespaced" == true ]; then
+    echo "Collect namespaced logs..."
+    gather_namespaced_resources ${BASE_COLLECTION_PATH} &
+    pids+=($!)
+fi
+
+if [ "$clusterscoped" == true ]; then
+    echo "Collect clusterscoped logs..."
+    gather_clusterscoped_resources ${BASE_COLLECTION_PATH} &
+    pids+=($!)
+fi
+
+# Preserve the functionality to accept and forward other args
+# This is unused as of now but is there, just in case :)
+if [ $# -gt 0 ]; then
+    # Normally we'll bootstrap the default gather process here
+    # and pass along the remaining args as is.
+    # Case where user has not specified any args and the mg should run
+    # in normal operating mode
+    gather_main "$@"
+fi
+
+# No args, normal op mode
+if [ "$default" = true ]; then
+    echo "Gather will start in default op mode"
+    gather_main
+fi
+
+# Check if PID array has any values, if so, wait for them to finish
+if [ ${#pids[@]} -ne 0 ]; then
+    echo "Waiting on subprocesses to finish execution."
+    wait "${pids[@]}"
 fi
 
 # Call post-uninstall.sh

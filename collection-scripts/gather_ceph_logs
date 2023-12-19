@@ -1,0 +1,78 @@
+#!/usr/bin/env bash
+
+# Expect base collection path as an exported variable
+# If it is not defined, use PWD instead
+BASE_COLLECTION_PATH=${BASE_COLLECTION_PATH:-"$(pwd)"}
+CEPH_COLLECTION_PATH="${BASE_COLLECTION_PATH}/ceph_logs"
+
+namespaces=$(oc get deploy --all-namespaces -o go-template --template='{{range .items}}{{if .metadata.labels}}{{printf "%s %v" .metadata.namespace (index .metadata.labels "olm.owner")}} {{printf "\n"}}{{end}}{{end}}' | grep ocs-operator | awk '{print $1}' | uniq)
+# Inspecting the namespace where ocs-cluster is installed
+for ns in $namespaces; do
+    # Add Ready nodes to the list
+    nodes=$(oc get nodes --no-headers | awk '/\yworker\y/{print $1}')
+
+    # Collecting Ceph daemon logs
+    ceph_daemon_log_collection() {
+        dbglog "collecting Ceph daemon logs from node ${node}"
+        oc rsync -n "${ns}" "$(oc get pods -n "${ns}" --no-headers | grep "${node//./}-debug" | awk '{print $1}')":/host/var/lib/rook/"${ns}"/log "${CEPH_DAEMON_LOG_OUTPUT_DIR}"
+    }
+
+    crash_core_collection() {
+        dbglog "collecting crash core dump from node ${node}"
+        oc rsync -n "${ns}" "$(oc get pods -n "${ns}" --no-headers | grep "${node//./}"-debug | awk '{print $1}')":/host/var/lib/rook/"${ns}"/crash/ "${CRASH_OUTPUT_DIR}"
+        oc rsync -n "${ns}" "$(oc get pods -n "${ns}" --no-headers | grep "${node//./}"-debug | awk '{print $1}')":/host/var/lib/systemd/coredump/ "${COREDUMP_OUTPUT_DIR}"
+    }
+
+    journal_collection() {
+        dbglog "collecting journal logs from node ${node}"
+        oc rsync -n "${ns}" "$(oc get pods -n "${ns}" --no-headers | grep "${node//./}"-debug | awk '{print $1}')":/host/var/log/journal_"${node}".gz "${JOURNAL_OUTPUT_DIR}"
+        oc rsync -n "${ns}" "$(oc get pods -n "${ns}" --no-headers | grep "${node//./}"-debug | awk '{print $1}')":/host/var/log/kernel_"${node}".gz "${KERNEL_OUTPUT_DIR}"
+    }
+
+    for node in ${nodes}; do
+        dbglog "Generating journal logs from node ${node}"
+        oc debug nodes/"${node}" <<CMDS
+            chroot /host
+            cd var/log
+            journalctl --since "2 days ago" | gzip > journal_"${node}".gz
+            journalctl -k -o short-iso-precise --utc --no-hostname | gzip > kernel_"${node}".gz
+            exit
+CMDS
+    done
+    # creating a counter variable for collecting PID in array
+    pids_log=()
+    for node in ${nodes}; do
+        dbglog "collecting crash, journal and volume logs from node ${node}"
+        CRASH_OUTPUT_DIR=${CEPH_COLLECTION_PATH}/crash_${node}
+        CEPH_DAEMON_LOG_OUTPUT_DIR=${CEPH_COLLECTION_PATH}/ceph_daemon_log_${node}
+        JOURNAL_OUTPUT_DIR=${CEPH_COLLECTION_PATH}/journal_${node}
+        KERNEL_OUTPUT_DIR=${CEPH_COLLECTION_PATH}/kernel_${node}
+        COREDUMP_OUTPUT_DIR=${CEPH_COLLECTION_PATH}/coredump_${node}
+        mkdir -p "${CRASH_OUTPUT_DIR}"
+        mkdir -p "${CEPH_DAEMON_LOG_OUTPUT_DIR}"
+        mkdir -p "${JOURNAL_OUTPUT_DIR}"
+        mkdir -p "${KERNEL_OUTPUT_DIR}"
+        mkdir -p "${COREDUMP_OUTPUT_DIR}"
+        ceph_daemon_log_collection &
+        pids_log+=($!)
+        crash_core_collection &
+        pids_log+=($!)
+        journal_collection &
+        pids_log+=($!)
+        if [ -n "${pids_log[*]}" ]; then
+            # wait for all pids
+            dbglog "waiting for ${pids_log[*]} to terminate"
+            wait "${pids_log[@]}"
+        fi
+        dbglog "Deleting journal logs from node ${node}"
+        oc debug nodes/"${node}" <<CMDS
+            chroot /host
+            cd var/log
+            rm -rf journal_"${node}".gz
+            rm -rf kernel_"${node}".gz
+            exit
+CMDS
+    done
+
+    dbglog "ceph core dump collection completed"
+done

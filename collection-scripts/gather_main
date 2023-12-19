@@ -1,0 +1,58 @@
+#!/usr/bin/env bash
+
+export BASE_COLLECTION_PATH="must-gather"
+mkdir -p ${BASE_COLLECTION_PATH}
+
+# Command line argument
+export SINCE_TIME=$1
+
+# Source the utils
+# shellcheck disable=SC1091
+. utils.sh
+
+# timestamp for starting of the script
+START_TIME=$(date +%r)
+start=$(date +%s)
+dbglog "collection started at: ${START_TIME}"
+
+# Call pre-install.sh, see commit msg
+pre-install.sh ${BASE_COLLECTION_PATH}
+
+# Call other gather scripts
+gather_namespaced_resources ${BASE_COLLECTION_PATH}
+gather_clusterscoped_resources ${BASE_COLLECTION_PATH}
+gather_noobaa_resources ${BASE_COLLECTION_PATH}
+gather_odf_client ${BASE_COLLECTION_PATH}
+
+namespace=$(oc get deploy --all-namespaces -o go-template --template='{{range .items}}{{if .metadata.labels}}{{printf "%s %v" .metadata.namespace (index .metadata.labels "olm.owner")}} {{printf "\n"}}{{end}}{{end}}' | grep ocs-operator | awk '{print $1}' | uniq)
+storageClusterPresent=$(oc get storagecluster -n "${namespace}" -o go-template='{{range .items}}{{.metadata.name}}{{"\n"}}{{end}}')
+externalStorageClusterPresent=$(oc get storagecluster -n "${namespace}" -o go-template='{{range .items}}{{.spec.externalStorage.enable}}{{"\n"}}{{end}}')
+reconcileStrategy=$(oc get storagecluster -n "${namespace}" -o go-template='{{range .items}}{{.spec.multiCloudGateway.reconcileStrategy}}{{"\n"}}{{end}}')
+
+if [ "${externalStorageClusterPresent}" = "true" ]; then
+    dbglog "Collecting limited ceph logs since external cluster is present"
+    gather_common_ceph_resources "${BASE_COLLECTION_PATH}"
+elif [ -z "${storageClusterPresent}" ]; then
+    dbglog "Skipping ceph collection as Storage Cluster is not present"
+elif [ "${reconcileStrategy}" = "standalone" ]; then
+    dbglog "Skipping ceph collection as this is a MCG only cluster"
+else
+    dbglog "Collecting entire ceph logs"
+    gather_ceph_resources ${BASE_COLLECTION_PATH}
+fi
+
+# Call post-uninstall.sh
+post-uninstall.sh
+
+# timestamp for ending of the script
+END_TIME=$(date +%r)
+end=$(date +%s)
+totalTime=$((end - start))
+{
+    printf "total time taken by collection was %s seconds \n" ${totalTime}
+    printf "collection ended at: %s \n" "${END_TIME}"
+    echo "deleting empty files"
+
+} >>${BASE_COLLECTION_PATH}/gather-debug.log 2>&1
+find "${BASE_COLLECTION_PATH}" -empty -delete >>${BASE_COLLECTION_PATH}/gather-debug.log 2>&1
+exit 0

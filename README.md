@@ -6,16 +6,47 @@ that expands its capabilities to gather Openshift Container Storage for informat
 
 ### Usage
 ```sh
-oc adm must-gather --image=registry.redhat.io/odf4/odf-must-gather-rhel9:v4.13
+oc adm must-gather --image=registry.redhat.io/odf4/odf-must-gather-rhel9:v4.13 -- /usr/bin/gather -arg1 -arg2
 ```
 
-The command above will create a local directory with a dump of the ocs state.
-Note that this command will only get data related to the ocs part of the OpenShift cluster.
+List of arguments that can be passed to the above command are:
+```
+  -d,  --dr                 Collect DR logs
+  -p,  --provider           Collect logs for provider/consumer cluster
+  -n,  --nooba              Collect nooba logs
+  -c,  --ceph               Collect ceph commands and pod logs
+  -cl, --ceph-logs          Collect ceph daemon, kernel, journal logs and crash reports
+  -ns, --namespaced         Collect namespaced resources
+  -cs, --clusterscoped      Collect clusterscoped resources
+  -h,  --help               Print this help message
+```
+
+## Description:
+
+ODF must-gather can run in modular mode and can collect JUST
+the resources you require to collect. You can use the args
+listed above to achieve that. If no arg is supplied the script
+will run in FULL collection mode and will gather all the resources
+from your cluster. This might take longer on some environments.
+
+Note: Provide each arg separately and do not chain them like:
+```
+        $ -dpnc          # Wrong
+        $ -d -p -n -c    # Correct
+```
+```
+Examples:
+  $ $0 -d -n --ceph         # Collect DR, nooba and ceph logs only.
+  $ $0 -h                   # Print help
+```
+
+The command above will create a local directory with a dump of the odf state.
+Note that this command will only get data related to the odf part of the OpenShift cluster.
 
 You will get a dump of:
-- The OCS Operator namespaces (and its children objects)
-- All namespaces (and their children objects) that belong to any OCS resources
-- All OCS CRD's definitions
+- The ODF Operator namespaces (and its children objects)
+- All namespaces (and their children objects) that belong to any ODF resources
+- All ODF CRD's definitions
 - All namespaces that contains ceph and noobaa
 - Output of the following ceph commands
     ```
@@ -40,7 +71,7 @@ You will get a dump of:
     ceph versions
     ```
 
-In order to get data about other parts of the cluster (not specific to OCS) you should
+In order to get data about other parts of the cluster (not specific to ODF) you should
 run `oc adm must-gather` (without passing a custom image). Run `oc adm must-gather -h` to see more options.
 
 ### Building locally for testing

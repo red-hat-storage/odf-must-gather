@@ -1,0 +1,34 @@
+#!/usr/bin/env bash
+
+# Expect base collection path as an exported variable
+# If it is not defined, use PWD instead
+BASE_COLLECTION_PATH=${BASE_COLLECTION_PATH:-"$(pwd)"}
+
+# Make a global variable for namespace
+
+RAMEN_NAMESPACE=openshift-dr-system
+
+#collect openshift-dr-system namespaced resources
+dr_resources=()
+dr_resources+=(secrets)
+dr_resources+=(configmap)
+dr_resources+=(pods -owide)
+
+dbglog "collecting dump of openshift-dr-system namespace"
+{ oc adm --dest-dir="${BASE_COLLECTION_PATH}" inspect ns/"${RAMEN_NAMESPACE}" --"${SINCE_TIME}" 2>&1; } | dbglog
+
+# Create the dir for oc_output for openshift-dr-system namespace
+mkdir -p "${BASE_COLLECTION_PATH}/namespaces/${RAMEN_NAMESPACE}/oc_output/"
+
+# Run the Collection of Resources to list
+for dr_resource in "${dr_resources[@]}"; do
+    dbglog "collecting oc command ${dr-resource}"
+    COMMAND_OUTPUT_FILE=${BASE_COLLECTION_PATH}/namespaces/${RAMEN_NAMESPACE}/oc_output/${dr_resource// /_}
+    # shellcheck disable=SC2086
+    { oc get ${dr_resource} -n ${RAMEN_NAMESPACE}; } >>"${COMMAND_OUTPUT_FILE}"
+done
+# Run collection of oc describe command for config map
+dbglog "collecting oc describe configmap -n ${RAMEN_NAMESPACE}"
+COMMAND_OUTPUT_FILE=${BASE_COLLECTION_PATH}/namespaces/${RAMEN_NAMESPACE}/oc_output/desc_configmap
+# shellcheck disable=SC2086
+{ oc describe configmap -n ${RAMEN_NAMESPACE}; } >>"${COMMAND_OUTPUT_FILE}"

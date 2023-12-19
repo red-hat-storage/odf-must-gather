@@ -9,7 +9,6 @@ INSTALL_NAMESPACES=$(oc get storagecluster -A --no-headers | awk '{print $1}')
 PRODUCT_NAMESPACE=$(oc get managedFusionOffering -A --no-headers | awk '{print $1}')
 OPERATOR_NAMESPACE=$(oc get subscription -A --no-headers | awk '{print $1}' | grep odf-operator)
 MANAGED_FUSION_NAMESPACE=$(oc get secrets -A --no-headers | grep managed-fusion-agent-config | awk '{print $1}')
-RAMEN_NAMESPACE=openshift-dr-system
 
 # Add general resources to list if necessary
 
@@ -23,12 +22,6 @@ resources=()
 
 # collect OB/OBC resoureces
 resources+=(objectbuckets)
-
-#collect openshift-dr-system namespaced resources
-dr_resources=()
-dr_resources+=(secrets)
-dr_resources+=(configmap)
-dr_resources+=(pods -owide)
 
 # collection path for OC commands
 mkdir -p "${BASE_COLLECTION_PATH}/oc_output/"
@@ -48,6 +41,7 @@ commands_get+=("secrets")
 commands_get+=("configmap")
 commands_get+=("rolebinding")
 commands_get+=("storageconsumer")
+commands_get+=("storageprofiles")
 commands_get+=("storageclassrequest")
 commands_get+=("alertmanager")
 commands_get+=("alertmanagerconfig")
@@ -61,6 +55,7 @@ commands_desc+=("hpa")
 commands_desc+=("subscription")
 commands_desc+=("storagecluster")
 commands_desc+=("storageconsumer")
+commands_desc+=("storageprofiles")
 commands_desc+=("storageclassrequest")
 commands_desc+=("alertmanager")
 commands_desc+=("prometheus")
@@ -115,8 +110,11 @@ done
 # Collect oc get events with sorted timestamp
 dbglog "collecting output of oc get events with sorted timestamp"
 { oc get event -o custom-columns="LAST SEEN:{lastTimestamp},FIRST SEEN:{firstTimestamp},COUNT:{count},NAME:{metadata.name},KIND:{involvedObject.kind},SUBOBJECT:{involvedObject.fieldPath},TYPE:{type},REASON:{reason},SOURCE:{source.component},MESSAGE:{message}" --sort-by=lastTimestamp -n openshift-storage; } >"${BASE_COLLECTION_PATH}/namespaces/${INSTALL_NAMESPACE}/oc_output/events_get" 2>&1
-{ oc describe events -n openshift-storage; } >"${BASE_COLLECTION_PATH}/namespaces/${INSTALL_NAMESPACE}/oc_output/events_desc" 2>&1
-{ oc get events -n openshift-storage -o yaml; } >"${BASE_COLLECTION_PATH}/namespaces/${INSTALL_NAMESPACE}/oc_output/events_yaml" 2>&1
+events=$(timeout 60 oc get events -n openshift-storage -o custom-columns="NAME:{metadata.name}" --sort-by=lastTimestamp --no-headers)
+for event in "${events[@]}"; do
+     { oc describe events "${event}" -n openshift-storage >> "${BASE_COLLECTION_PATH}/namespaces/${INSTALL_NAMESPACE}/oc_output/events_desc"; }
+     { oc get events "${event}" -n openshift-storage -o yaml >> "${BASE_COLLECTION_PATH}/namespaces/${INSTALL_NAMESPACE}/oc_output/events_yaml"; }
+done
 
 # Create the dir for data from all namespaces
 mkdir -p "${BASE_COLLECTION_PATH}/namespaces/all/"
@@ -126,31 +124,6 @@ for resource in "${resources[@]}"; do
      dbglog "collecting dump of ${resource}"
      { oc adm --dest-dir="${BASE_COLLECTION_PATH}/namespaces/all/" inspect "${resource}" --all-namespaces --"${SINCE_TIME}" 2>&1; } | dbglog
 done
-
-{ timeout 60 oc get ns openshift-dr-system; }
-# Verify if openshift-dr-system namespace exists
-if [ $? = 0 ]; then
-     dbglog "collecting dump of openshift-dr-system namespace"
-     { oc adm --dest-dir="${BASE_COLLECTION_PATH}" inspect ns/"${RAMEN_NAMESPACE}" --"${SINCE_TIME}" 2>&1; } | dbglog
-
-     # Create the dir for oc_output for openshift-dr-system namespace
-     mkdir -p "${BASE_COLLECTION_PATH}/namespaces/${RAMEN_NAMESPACE}/oc_output/"
-
-     # Run the Collection of Resources to list
-     for dr_resource in "${dr_resources[@]}"; do
-          dbglog "collecting oc command ${dr-resource}"
-          COMMAND_OUTPUT_FILE=${BASE_COLLECTION_PATH}/namespaces/${RAMEN_NAMESPACE}/oc_output/${dr_resource// /_}
-          # shellcheck disable=SC2086
-          { oc get ${dr_resource} -n ${RAMEN_NAMESPACE}; } >>"${COMMAND_OUTPUT_FILE}"
-     done
-     # Run collection of oc describe command for config map
-     dbglog "collecting oc describe configmap -n ${RAMEN_NAMESPACE}"
-     COMMAND_OUTPUT_FILE=${BASE_COLLECTION_PATH}/namespaces/${RAMEN_NAMESPACE}/oc_output/desc_configmap
-     # shellcheck disable=SC2086
-     { oc describe configmap -n ${RAMEN_NAMESPACE}; } >>"${COMMAND_OUTPUT_FILE}"
-else
-     { printf "No openshift-dr-system namespace"; }
-fi
 
 # For pvc of all namespaces
 dbglog "collecting dump of oc get pvc all namespaces"
