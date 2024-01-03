@@ -12,7 +12,7 @@ procids+=($!)
 gather_noobaa_resources &
 procids+=($!)
 
-gather_odf_client &
+gather_ceph_logs &
 procids+=($!)
 
 gather_ceph_pod_logs &
