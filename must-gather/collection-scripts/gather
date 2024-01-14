@@ -6,6 +6,9 @@ mkdir -p ${BASE_COLLECTION_PATH}
 # Command line argument
 export SINCE_TIME=$1
 
+# Store PIDs of all the subprocesses
+pids=()
+
 # Source the utils
 # shellcheck disable=SC1091
 . utils.sh
@@ -20,9 +23,13 @@ pre-install.sh ${BASE_COLLECTION_PATH}
 
 # Call other gather scripts
 gather_namespaced_resources ${BASE_COLLECTION_PATH} &
+pids+=($!)
 gather_clusterscoped_resources ${BASE_COLLECTION_PATH} &
+pids+=($!)
 gather_noobaa_resources ${BASE_COLLECTION_PATH} &
+pids+=($!)
 gather_odf_client ${BASE_COLLECTION_PATH} &
+pids+=($!)
 
 namespace=$(oc get deploy --all-namespaces -o go-template --template='{{range .items}}{{if .metadata.labels}}{{printf "%s %v" .metadata.namespace (index .metadata.labels "olm.owner")}} {{printf "\n"}}{{end}}{{end}}' | grep ocs-operator | awk '{print $1}' | uniq)
 storageClusterPresent=$(oc get storagecluster -n "${namespace}" -o go-template='{{range .items}}{{.metadata.name}}{{"\n"}}{{end}}')
@@ -32,6 +39,7 @@ reconcileStrategy=$(oc get storagecluster -n "${namespace}" -o go-template='{{ra
 if [ "${externalStorageClusterPresent}" = "true" ]; then
     dbglog "Collecting limited ceph logs since external cluster is present"
     gather_common_ceph_resources "${BASE_COLLECTION_PATH}" &
+    pids+=($!)
 elif [ -z "${storageClusterPresent}" ]; then
     dbglog "Skipping ceph collection as Storage Cluster is not present"
 elif [ "${reconcileStrategy}" = "standalone" ]; then
@@ -39,10 +47,14 @@ elif [ "${reconcileStrategy}" = "standalone" ]; then
 else
     dbglog "Collecting entire ceph logs"
     gather_ceph_resources ${BASE_COLLECTION_PATH} &
+    pids+=($!)
 fi
 
-# Wait until gather scripts finish
-wait
+# Check if PID array has any values, if so, wait for them to finish
+if [ ${#pids[@]} -ne 0 ]; then
+    echo "Waiting on subprocesses to finish execution."
+    wait "${pids[@]}"
+fi
 
 # Call post-uninstall.sh
 post-uninstall.sh
