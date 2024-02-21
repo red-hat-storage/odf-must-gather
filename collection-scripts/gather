@@ -85,7 +85,7 @@ display_help() {
 Usage: $0 [OPTIONS]
 
 Options:
-  -o,  --odf                Collect ODF logs (default operation mode)
+  -o,  --odf                Collect ODF logs
   -d,  --dr                 Collect DR logs
   -p,  --provider           Collect logs for provider/consumer cluster
   -n,  --nooba              Collect nooba logs
