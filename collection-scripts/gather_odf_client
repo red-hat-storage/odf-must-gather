@@ -10,6 +10,7 @@ CLIENT_OPERATOR_NAMESPACE=$(oc get subscriptions -A --no-headers | grep ocs-clie
 
 # collection path for OC commands
 mkdir -p "${BASE_COLLECTION_PATH}/odf-client/oc_output/"
+mkdir -p "${BASE_COLLECTION_PATH}/csidriver"
 
 # Command List
 commands_get=()
@@ -109,3 +110,8 @@ for INSTALL_NAMESPACE in  $STORAGE_CLIENT_NAMESPACE ; do
           { oc describe ${command_desc} -n ${INSTALL_NAMESPACE}; } >>"${COMMAND_OUTPUT_FILE}" 
      done
 done
+
+# collect csidriver details
+{ oc get csidriver; } >"${BASE_COLLECTION_PATH}/csidriver/get_csidriver" 2>&1
+{ oc describe csidriver -o yaml; } >"${BASE_COLLECTION_PATH}/csidriver/desc_csidriver" 2>&1
+{ oc get csidriver -o yaml; } >"${BASE_COLLECTION_PATH}/csidriver/csidriver.yaml" 2>&1
