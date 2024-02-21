@@ -105,6 +105,11 @@ Examples:
 EOF
 }
 
+# If help is requested, we print it out and do nothing else (exit 0)
+if [ "$help" = true ]; then
+    display_help && exit 0
+fi
+
 export BASE_COLLECTION_PATH="must-gather"
 mkdir -p ${BASE_COLLECTION_PATH}
 
@@ -122,11 +127,6 @@ dbglog "collection started at: ${START_TIME}"
 
 # Call pre-install.sh, see commit msg
 pre-install.sh ${BASE_COLLECTION_PATH}
-
-# If help is requested, we print it out and do nothing else (exit 0)
-if [ "$help" = true ]; then
-    display_help && exit 0
-fi
 
 # Process the options
 if [ "$dr" == true ]; then
