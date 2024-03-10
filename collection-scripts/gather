@@ -12,12 +12,10 @@ clusterscoped=false
 help=false
 default=true
 
+export CEPH_LOGS_SINCE_HOURS="48"
+
 # Store PIDs of all the subprocesses
 pids=()
-
-# Source the common
-# shellcheck disable=SC1091
-. common.sh
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -58,8 +56,7 @@ while [[ $# -gt 0 ]]; do
             echo "Error: -cls argument value must be an integer (number of hours)"
             exit 1
         else
-            CEPH_LOGS_SINCE_HOURS="$1"
-            echo "CEPH_LOGS_SINCE_HOURS={$CEPH_LOGS_SINCE_HOURS}"
+            export CEPH_LOGS_SINCE_HOURS="$1"
             shift
         fi
         ;;
