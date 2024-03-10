@@ -30,11 +30,11 @@ for ns in $namespaces; do
     }
 
     for node in ${nodes}; do
-        dbglog "Generating journal logs from node ${node}"
+        dbglog "Generating journal logs from node ${node} since ${CEPH_LOGS_SINCE_HOURS} hours ago"
         oc debug nodes/"${node}" <<CMDS
             chroot /host
             cd var/log
-            journalctl --since "2 days ago" | gzip > journal_"${node}".gz
+            journalctl --since "${CEPH_LOGS_SINCE_HOURS} hours ago" | gzip > journal_"${node}".gz
             journalctl -k -o short-iso-precise --utc --no-hostname | gzip > kernel_"${node}".gz
             exit
 CMDS

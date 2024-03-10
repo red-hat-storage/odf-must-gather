@@ -15,6 +15,10 @@ default=true
 # Store PIDs of all the subprocesses
 pids=()
 
+# Source the common
+# shellcheck disable=SC1091
+. common.sh
+
 while [[ $# -gt 0 ]]; do
     case "$1" in
     -o | --odf)
@@ -46,6 +50,18 @@ while [[ $# -gt 0 ]]; do
         cephlogs=true
         default=false
         shift
+        ;;
+    -cls | --ceph-logs-since)
+        shift
+        # Check if cls argument value is an integer
+        if [[ ! "$1" =~ ^[0-9]+$ ]]; then
+            echo "Error: -cls argument value must be an integer (number of hours)"
+            exit 1
+        else
+            CEPH_LOGS_SINCE_HOURS="$1"
+            echo "CEPH_LOGS_SINCE_HOURS={$CEPH_LOGS_SINCE_HOURS}"
+            shift
+        fi
         ;;
     -ns | --namespaced)
         namespaced=true
