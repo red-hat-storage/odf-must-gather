@@ -88,10 +88,10 @@ for resource in "${ceph_resources[@]}"; do
 done
 
 namespaces=$(oc get deploy --all-namespaces -o go-template --template='{{range .items}}{{if .metadata.labels}}{{printf "%s %v" .metadata.namespace (index .metadata.labels "olm.owner")}} {{printf "\n"}}{{end}}{{end}}' | grep ocs-operator | awk '{print $1}' | uniq)
-namespaces="openshift-storage-extended"
+namespaces+=" openshift-storage-extended"
 # Inspecting the namespace where ocs-cluster is installed
 for ns in $namespaces; do
-    dblog "collecting details of ns ${ns}"
+    dbglog "collecting details of ns ${ns}"
     ceph_collection() {
         COMMAND_OUTPUT_DIR=${CEPH_COLLECTION_PATH}/must_gather_commands
         COMMAND_JSON_OUTPUT_DIR=${CEPH_COLLECTION_PATH}/must_gather_commands_json_output
