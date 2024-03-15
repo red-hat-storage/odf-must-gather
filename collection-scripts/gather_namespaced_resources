@@ -54,6 +54,7 @@ commands_desc+=("pods")
 commands_desc+=("hpa")
 commands_desc+=("subscription")
 commands_desc+=("storagecluster")
+commands_desc+=("storagesystem")
 commands_desc+=("storageconsumer")
 commands_desc+=("storageprofiles")
 commands_desc+=("storageclassrequest")
@@ -100,12 +101,11 @@ for INSTALL_NAMESPACE in $PRODUCT_NAMESPACE $INSTALL_NAMESPACES $MANAGED_FUSION_
           # shellcheck disable=SC2086
           { oc describe ${command_desc} -n ${INSTALL_NAMESPACE}; } >>"${COMMAND_OUTPUT_FILE}"
      done
+     # NOTE: This is a temporary fix for collecting the storagecluster as we are not able to collect the storagecluster using the inspect command
+     { oc get storageclusters -n "${INSTALL_NAMESPACE}" -o yaml; } >"${BASE_COLLECTION_PATH}/namespaces/${INSTALL_NAMESPACE}/oc_output/storagecluster.yaml" 2>&1
+     { oc get storagesystem -n "${INSTALL_NAMESPACE}" -o yaml; } >"${BASE_COLLECTION_PATH}/namespaces/${INSTALL_NAMESPACE}/oc_output/storagesystem.yaml" 2>&1
+     { oc get storageconsumer -n "${INSTALL_NAMESPACE}" -o yaml; } >"${BASE_COLLECTION_PATH}/namespaces/${INSTALL_NAMESPACE}/oc_output/storageconsumer.yaml" 2>&1
 done
-
-# NOTE: This is a temporary fix for collecting the storagecluster as we are not able to collect the storagecluster using the inspect command
-{ oc get storageclusters -n "${INSTALL_NAMESPACE}" -o yaml; } >"${BASE_COLLECTION_PATH}/namespaces/${INSTALL_NAMESPACE}/oc_output/storagecluster.yaml" 2>&1
-{ oc get storagesystem -n "${INSTALL_NAMESPACE}" -o yaml; } >"${BASE_COLLECTION_PATH}/namespaces/${INSTALL_NAMESPACE}/oc_output/storagesystem.yaml" 2>&1
-{ oc get storageconsumer -n "${INSTALL_NAMESPACE}" -o yaml; } >"${BASE_COLLECTION_PATH}/namespaces/${INSTALL_NAMESPACE}/oc_output/storageconsumer.yaml" 2>&1
 
 # Collect oc get events with sorted timestamp
 dbglog "collecting output of oc get events with sorted timestamp"

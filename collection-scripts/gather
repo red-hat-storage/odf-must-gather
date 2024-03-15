@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 
 # Predefined operating modes
+odf=false
 dr=false
 pc=false
 nooba=false
@@ -16,12 +17,17 @@ pids=()
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
+    -o | --odf)
+        odf=true
+        default=false
+        shift
+        ;;
     -d | --dr)
         dr=true
         default=false
         shift
         ;;
-    -p | --provider*)
+    -pc | --provider*)
         pc=true
         default=false
         shift
@@ -79,8 +85,9 @@ display_help() {
 Usage: $0 [OPTIONS]
 
 Options:
+  -o,  --odf                Collect ODF logs
   -d,  --dr                 Collect DR logs
-  -p,  --provider           Collect logs for provider/consumer cluster
+  -pc, --provider           Collect openshift-storage-client logs from a provider/consumer cluster
   -n,  --nooba              Collect nooba logs
   -c,  --ceph               Collect ceph commands and pod logs
   -cl, --ceph-logs          Collect ceph daemon, kernel, journal logs and crash reports
@@ -95,15 +102,20 @@ Description:
   will run in FULL collection mode and will gather all the resources
   from your cluster. This might take longer on some environments.
 
-  Note: Provide each arg separately and do not chain them like:
-        $ $0 -dpnc          # Wrong
-        $ $0 -d -p -n -c    # Correct
+Note: Provide each arg separately and do not chain them like:
+  $ oc adm must-gather --image=<odf-must-gather-image> -- $0  -dpnc          # Wrong
+  $ oc adm must-gather --image=<odf-must-gather-image> -- $0 -d -p -n -c     # Correct
 
 Examples:
-  $ $0 -d -n --ceph         # Collect DR, nooba and ceph logs only.
-  $ $0 -h                   # Print help
+  $ oc adm must-gather --image=<odf-must-gather-image> -- $0 -d -n --ceph    # Collect DR, nooba and ceph logs only.
+  $ oc adm must-gather --image=<odf-must-gather-image> -- $0 -h              # Print help
 EOF
 }
+
+# If help is requested, we print it out and do nothing else (exit 0)
+if [ "$help" = true ]; then
+    display_help && exit 0
+fi
 
 export BASE_COLLECTION_PATH="must-gather"
 mkdir -p ${BASE_COLLECTION_PATH}
@@ -123,12 +135,13 @@ dbglog "collection started at: ${START_TIME}"
 # Call pre-install.sh, see commit msg
 pre-install.sh ${BASE_COLLECTION_PATH}
 
-# If help is requested, we print it out and do nothing else (exit 0)
-if [ "$help" = true ]; then
-    display_help && exit 0
+# Process the options
+if [ "$odf" == true ]; then
+    echo "Collect ODF logs..."
+    gather_main &
+    pids+=($!)
 fi
 
-# Process the options
 if [ "$dr" == true ]; then
     echo "Collect DR logs..."
     gather_dr_resources ${BASE_COLLECTION_PATH} &
@@ -183,7 +196,7 @@ fi
 
 # No args, normal op mode
 if [ "$default" = true ]; then
-    echo "Gather will start in default op mode"
+    echo "No args detected, must-gather will start in default op mode"
     gather_main
 fi
 

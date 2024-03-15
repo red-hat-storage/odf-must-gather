@@ -14,7 +14,7 @@ oc adm must-gather --image=registry.redhat.io/odf4/odf-must-gather-rhel9:v4.13 -
 List of arguments that can be passed to the odf-must-gather are:
 ```
 -d,  --dr                 Collect DR logs
--p,  --provider           Collect logs for provider/consumer cluster
+-pc,  --provider          Collect openshift-storage-client logs from a provider/consumer cluster
 -n,  --nooba              Collect nooba logs
 -c,  --ceph               Collect ceph commands and pod logs
 -cl, --ceph-logs          Collect ceph daemon, kernel, journal logs and crash reports
@@ -33,13 +33,13 @@ from your cluster. This might take longer on some environments.
 
 Note: Provide each arg separately and do not chain them like:
 ```
-$ /usr/bin/gather -dpnc          # Wrong
-$ /usr/bin/gather -d -p -n -c    # Correct
+$ oc adm must-gather --image=<odf-must-gather-image> -- /usr/bin/gather  -dpnc          # Wrong
+$ oc adm must-gather --image=<odf-must-gather-image> -- /usr/bin/gather -d -p -n -c     # Correct
 ```
 Examples:
 ```
-$ /usr/bin/gather -d -n --ceph         # Collect DR, nooba and ceph logs only.
-$ /usr/bin/gather -h                   # Print help
+$ oc adm must-gather --image=<odf-must-gather-image> -- /usr/bin/gather -d -n --ceph    # Collect DR, nooba and ceph logs only.
+$ oc adm must-gather --image=<odf-must-gather-image> -- /usr/bin/gather -h              # Print help
 ```
 
 The command above will create a local directory with a dump of the ODF state.
