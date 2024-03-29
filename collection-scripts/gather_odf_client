@@ -53,11 +53,11 @@ client_commands_desc+=("storageclassclaims")
 
 for INSTALL_NAMESPACE in $CLIENT_OPERATOR_NAMESPACE; do
      dbglog "collecting dump of namespace ${INSTALL_NAMESPACE}"
-     { oc adm inspect --dest-dir="${BASE_COLLECTION_PATH}" ns/"${INSTALL_NAMESPACE}" 2>&1; } | dbglog
+     { oc adm inspect --dest-dir="${BASE_COLLECTION_PATH}" "${LOG_FILTER_ARGS}" ns/"${INSTALL_NAMESPACE}" 2>&1; } | dbglog
      # Run the Collection of oc yaml outputs
      for oc_yaml in "${oc_yamls[@]}"; do
           # shellcheck disable=SC2129
-          { oc adm inspect -n "${INSTALL_NAMESPACE}" --dest-dir="${BASE_COLLECTION_PATH}" "${oc_yaml}" 2>&1; } | dbglog
+          { oc adm inspect -n "${INSTALL_NAMESPACE}" --dest-dir="${BASE_COLLECTION_PATH}" "${LOG_FILTER_ARGS}" "${oc_yaml}" 2>&1; } | dbglog
      done
 
      # Create the dir for oc_output
@@ -82,11 +82,11 @@ done
 
 for INSTALL_NAMESPACE in $STORAGE_CLIENT_NAMESPACE; do
      dbglog "collecting dump of namespace ${INSTALL_NAMESPACE}"
-     { oc adm inspect --dest-dir="${BASE_COLLECTION_PATH}" ns/"${INSTALL_NAMESPACE}" 2>&1; } | dbglog
+     { oc adm inspect --dest-dir="${BASE_COLLECTION_PATH}" "${LOG_FILTER_ARGS}" ns/"${INSTALL_NAMESPACE}" 2>&1; } | dbglog
      # Run the Collection of oc yaml outputs
      for oc_yaml in "${client_oc_yamls[@]}"; do
           # shellcheck disable=SC2129
-          { oc adm inspect -n "${INSTALL_NAMESPACE}" --dest-dir="${BASE_COLLECTION_PATH}" "${oc_yaml}" 2>&1; } | dbglog
+          { oc adm inspect -n "${INSTALL_NAMESPACE}" --dest-dir="${BASE_COLLECTION_PATH}" "${LOG_FILTER_ARGS}" "${oc_yaml}" 2>&1; } | dbglog
      done
 
      # Create the dir for oc_output

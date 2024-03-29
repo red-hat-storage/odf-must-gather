@@ -124,10 +124,17 @@ mkdir -p ${BASE_COLLECTION_PATH}
 # shellcheck disable=SC1091
 . utils.sh
 
+# Parse the ENV for collection filters
+parse_since_time
+
 # timestamp for starting of the script
 START_TIME=$(date +%r)
 start=$(date +%s)
 dbglog "collection started at: ${START_TIME}"
+
+if [ -n "${LOG_FILTER_ARGS:-}" ]; then
+    dbglog "Logs will be filtered using: ${LOG_FILTER_ARGS}"
+fi
 
 # Call pre-install.sh, see commit msg
 pre-install.sh ${BASE_COLLECTION_PATH}
