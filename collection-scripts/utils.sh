@@ -56,6 +56,27 @@ parse_since_time() {
     if [ -n "${FILTER_ARGS}" ]; then
         export LOG_FILTER_ARGS="${FILTER_ARGS}"
     fi
+
+    # Journalctl doesn't support the same type of since and
+    # since-time args. Adapt the logic for journalctl
+    local JRNL_FILTER=""
+
+    if [ -n "${MUST_GATHER_SINCE:-}" ]; then
+        JRNL_FILTER="${MUST_GATHER_SINCE} ago"
+    fi
+
+    # This section adapts an ISO time like: 2024-04-04T09:23:26Z
+    # To 2024-04-04 09:23:26, a format that journalctl is happy with
+    if [ -n "${MUST_GATHER_SINCE_TIME:-}" ]; then
+        JRNL_FILTER=$(echo "${MUST_GATHER_SINCE_TIME}" | sed 's/T/ /; s/Z//')
+    fi
+
+    # If the var is unset, export the default as 2 days ago
+    if [ -n "${JRNL_FILTER}" ]; then
+        export JCTL_FILTER_ARGS="${JRNL_FILTER}"
+    else
+        export JCTL_FILTER_ARGS="2 days ago"
+    fi
 }
 
 # Export the functions so that the file needs to be sourced only once
