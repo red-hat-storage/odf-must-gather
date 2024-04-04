@@ -193,6 +193,7 @@ fi
 
 # No args, normal op mode
 if [ "$default" = true ]; then
+    # TODO: Add warning helptext here
     echo "No args detected, must-gather will start in default op mode"
     gather_main
 fi
