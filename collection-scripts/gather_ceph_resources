@@ -4,7 +4,7 @@
 # If it is not defined, use PWD instead
 BASE_COLLECTION_PATH=${BASE_COLLECTION_PATH:-"$(pwd)"}
 
-gather_common_ceph_resources "${BASE_COLLECTION_PATH}" "${SINCE_TIME}"
+gather_common_ceph_resources "${BASE_COLLECTION_PATH}"
 CEPH_GATHER_DBGLOG="${BASE_COLLECTION_PATH}"/gather-ceph-debug.log
 CEPH_COLLECTION_PATH="${BASE_COLLECTION_PATH}/ceph"
 
@@ -30,6 +30,7 @@ ceph_commands+=("ceph fs dump")
 ceph_commands+=("ceph fs ls")
 ceph_commands+=("ceph fs status")
 ceph_commands+=("ceph health detail")
+ceph_commands+=("ceph healthcheck history ls")
 ceph_commands+=("ceph mds stat")
 ceph_commands+=("ceph mgr dump")
 ceph_commands+=("ceph mgr module ls")
@@ -84,14 +85,14 @@ rados_commands+=("rados ls --pool=ocs-storagecluster-cephfilesystem-metadata --n
 # Inspecting ceph related custom resources for all namespaces
 for resource in "${ceph_resources[@]}"; do
     dbglog "collecting dump ${resource}"
-    { oc adm --dest-dir="${CEPH_COLLECTION_PATH}" inspect "${resource}" --all-namespaces --"${SINCE_TIME}" 2>&1; } | dbglog
+    { oc adm inspect --dest-dir="${CEPH_COLLECTION_PATH}" --all-namespaces "${resource}" 2>&1; } | dbglog
 done
 
 namespaces=$(oc get deploy --all-namespaces -o go-template --template='{{range .items}}{{if .metadata.labels}}{{printf "%s %v" .metadata.namespace (index .metadata.labels "olm.owner")}} {{printf "\n"}}{{end}}{{end}}' | grep ocs-operator | awk '{print $1}' | uniq)
-namespaces="openshift-storage-extended"
+namespaces+=" openshift-storage-extended"
 # Inspecting the namespace where ocs-cluster is installed
 for ns in $namespaces; do
-    dblog "collecting details of ns ${ns}"
+    dbglog "collecting details of ns ${ns}"
     ceph_collection() {
         COMMAND_OUTPUT_DIR=${CEPH_COLLECTION_PATH}/must_gather_commands
         COMMAND_JSON_OUTPUT_DIR=${CEPH_COLLECTION_PATH}/must_gather_commands_json_output

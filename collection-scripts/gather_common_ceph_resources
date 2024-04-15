@@ -14,5 +14,5 @@ common_ceph_resources+=(cephclusters)
 
 for resource in "${common_ceph_resources[@]}"; do
     dbglog "collecting dump ${resource}"
-    { oc adm --dest-dir="${CEPH_COLLECTION_PATH}" inspect "${resource}" --all-namespaces --"${SINCE_TIME}" 2>&1; } | dbglog
+    { oc adm inspect --dest-dir="${CEPH_COLLECTION_PATH}" --all-namespaces "${resource}" 2>&1; } | dbglog
 done

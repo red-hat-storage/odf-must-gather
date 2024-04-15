@@ -4,7 +4,7 @@
 odf=false
 dr=false
 pc=false
-nooba=false
+noobaa=false
 ceph=false
 cephlogs=false
 namespaced=false
@@ -32,8 +32,8 @@ while [[ $# -gt 0 ]]; do
         default=false
         shift
         ;;
-    -n | --nooba)
-        nooba=true
+    -n | --noobaa)
+        noobaa=true
         default=false
         shift
         ;;
@@ -88,7 +88,7 @@ Options:
   -o,  --odf                Collect ODF logs
   -d,  --dr                 Collect DR logs
   -pc, --provider           Collect openshift-storage-client logs from a provider/consumer cluster
-  -n,  --nooba              Collect nooba logs
+  -n,  --noobaa             Collect noobaa logs
   -c,  --ceph               Collect ceph commands and pod logs
   -cl, --ceph-logs          Collect ceph daemon, kernel, journal logs and crash reports
   -ns, --namespaced         Collect namespaced resources
@@ -104,10 +104,10 @@ Description:
 
 Note: Provide each arg separately and do not chain them like:
   $ oc adm must-gather --image=<odf-must-gather-image> -- $0  -dpnc          # Wrong
-  $ oc adm must-gather --image=<odf-must-gather-image> -- $0 -d -p -n -c     # Correct
+  $ oc adm must-gather --image=<odf-must-gather-image> -- $0  -d -p -n -c    # Correct
 
 Examples:
-  $ oc adm must-gather --image=<odf-must-gather-image> -- $0 -d -n --ceph    # Collect DR, nooba and ceph logs only.
+  $ oc adm must-gather --image=<odf-must-gather-image> -- $0 -d -n --ceph    # Collect DR, noobaa and ceph logs only.
   $ oc adm must-gather --image=<odf-must-gather-image> -- $0 -h              # Print help
 EOF
 }
@@ -119,9 +119,6 @@ fi
 
 export BASE_COLLECTION_PATH="must-gather"
 mkdir -p ${BASE_COLLECTION_PATH}
-
-# Command line argument
-export SINCE_TIME=$1
 
 # Source the utils
 # shellcheck disable=SC1091
@@ -154,8 +151,8 @@ if [ "$pc" == true ]; then
     pids+=($!)
 fi
 
-if [ "$nooba" == true ]; then
-    echo "Collect Nooba logs..."
+if [ "$noobaa" == true ]; then
+    echo "Collect noobaa logs..."
     gather_noobaa_resources ${BASE_COLLECTION_PATH} &
     pids+=($!)
 fi

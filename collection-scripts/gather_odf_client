@@ -4,7 +4,6 @@
 # If it is not defined, use PWD instead
 BASE_COLLECTION_PATH=${BASE_COLLECTION_PATH:-"$(pwd)"}
 
-
 STORAGE_CLIENT_NAMESPACE=$(oc get storageclients -A --no-headers | awk '{print $1}')
 CLIENT_OPERATOR_NAMESPACE=$(oc get subscriptions -A --no-headers | grep ocs-client-operator | awk '{print $1}')
 
@@ -52,14 +51,13 @@ client_commands_desc=()
 client_commands_desc+=("storageclients")
 client_commands_desc+=("storageclassclaims")
 
-
-for INSTALL_NAMESPACE in  $CLIENT_OPERATOR_NAMESPACE ; do
+for INSTALL_NAMESPACE in $CLIENT_OPERATOR_NAMESPACE; do
      dbglog "collecting dump of namespace ${INSTALL_NAMESPACE}"
-     { oc adm --dest-dir="${BASE_COLLECTION_PATH}" inspect ns/"${INSTALL_NAMESPACE}" --"${SINCE_TIME}" 2>&1; } | dbglog
+     { oc adm inspect --dest-dir="${BASE_COLLECTION_PATH}" ns/"${INSTALL_NAMESPACE}" 2>&1; } | dbglog
      # Run the Collection of oc yaml outputs
      for oc_yaml in "${oc_yamls[@]}"; do
           # shellcheck disable=SC2129
-          { oc adm --dest-dir="${BASE_COLLECTION_PATH}" inspect "${oc_yaml}" -n "${INSTALL_NAMESPACE}" --"${SINCE_TIME}" 2>&1; } | dbglog
+          { oc adm inspect -n "${INSTALL_NAMESPACE}" --dest-dir="${BASE_COLLECTION_PATH}" "${oc_yaml}" 2>&1; } | dbglog
      done
 
      # Create the dir for oc_output
@@ -78,17 +76,17 @@ for INSTALL_NAMESPACE in  $CLIENT_OPERATOR_NAMESPACE ; do
           dbglog "collecting oc describe command ${command_desc}"
           COMMAND_OUTPUT_FILE=${BASE_COLLECTION_PATH}/namespaces/${INSTALL_NAMESPACE}/oc_output/${command_desc// /_}
           # shellcheck disable=SC2086
-          { oc describe ${command_desc} -n ${INSTALL_NAMESPACE}; } >>"${COMMAND_OUTPUT_FILE}" 
+          { oc describe ${command_desc} -n ${INSTALL_NAMESPACE}; } >>"${COMMAND_OUTPUT_FILE}"
      done
 done
 
-for INSTALL_NAMESPACE in  $STORAGE_CLIENT_NAMESPACE ; do
+for INSTALL_NAMESPACE in $STORAGE_CLIENT_NAMESPACE; do
      dbglog "collecting dump of namespace ${INSTALL_NAMESPACE}"
-     { oc adm --dest-dir="${BASE_COLLECTION_PATH}" inspect ns/"${INSTALL_NAMESPACE}" --"${SINCE_TIME}" 2>&1; } | dbglog
+     { oc adm inspect --dest-dir="${BASE_COLLECTION_PATH}" ns/"${INSTALL_NAMESPACE}" 2>&1; } | dbglog
      # Run the Collection of oc yaml outputs
      for oc_yaml in "${client_oc_yamls[@]}"; do
           # shellcheck disable=SC2129
-          { oc adm --dest-dir="${BASE_COLLECTION_PATH}" inspect "${oc_yaml}" -n "${INSTALL_NAMESPACE}" --"${SINCE_TIME}" 2>&1; } | dbglog
+          { oc adm inspect -n "${INSTALL_NAMESPACE}" --dest-dir="${BASE_COLLECTION_PATH}" "${oc_yaml}" 2>&1; } | dbglog
      done
 
      # Create the dir for oc_output
@@ -107,7 +105,7 @@ for INSTALL_NAMESPACE in  $STORAGE_CLIENT_NAMESPACE ; do
           dbglog "collecting oc describe command ${command_desc}"
           COMMAND_OUTPUT_FILE=${BASE_COLLECTION_PATH}/namespaces/${INSTALL_NAMESPACE}/oc_output/${command_desc// /_}
           # shellcheck disable=SC2086
-          { oc describe ${command_desc} -n ${INSTALL_NAMESPACE}; } >>"${COMMAND_OUTPUT_FILE}" 
+          { oc describe ${command_desc} -n ${INSTALL_NAMESPACE}; } >>"${COMMAND_OUTPUT_FILE}"
      done
 done
 

@@ -66,7 +66,7 @@ done
 
 # Run the Collection of Resources oc yaml to list
 for oc_yaml in "${oc_yamls[@]}"; do
-    { oc adm --dest-dir="${BASE_COLLECTION_PATH}" inspect "${oc_yaml}" --"${SINCE_TIME}" 2>&1; } | dbglog
+    { oc adm inspect --dest-dir="${BASE_COLLECTION_PATH}" "${oc_yaml}" 2>&1; } | dbglog
 done
 
 # Run the Collection of Resources oc describe to list
