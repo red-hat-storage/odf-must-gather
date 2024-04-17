@@ -136,6 +136,12 @@ dbglog "collecting dump of oc get volumesnapshot all namespaces"
 { oc describe volumesnapshot --all-namespaces; } >>"${BASE_COLLECTION_PATH}/namespaces/all/desc_volumesnapshot_all_namespaces"
 { oc adm inspect --all-namespaces --dest-dir="${BASE_COLLECTION_PATH}/namespaces/all/" "${LOG_FILTER_ARGS}" volumesnapshot 2>&1; } | dbglog
 
+# For volumegroupsnapshot of all namespaces
+dbglog "collecting dump of oc get volumegroupsnapshot all namespaces"
+{ oc get volumegroupsnapshot --all-namespaces; } >>"${BASE_COLLECTION_PATH}/namespaces/all/get_volumegroupsnapshot_all_namespaces"
+{ oc describe volumegroupsnapshot --all-namespaces; } >>"${BASE_COLLECTION_PATH}/namespaces/all/desc_volumegroupsnapshot_all_namespaces"
+{ oc adm inspect --all-namespaces --dest-dir="${BASE_COLLECTION_PATH}/namespaces/all/" "${LOG_FILTER_ARGS}" volumegroupsnapshot 2>&1; } | dbglog
+
 # For obc of all namespaces
 dbglog "collecting dump of oc get obc all namespaces"
 { oc get obc --all-namespaces; } >>"${BASE_COLLECTION_PATH}/namespaces/all/obc_all_namespaces"
