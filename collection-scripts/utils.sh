@@ -32,6 +32,54 @@ dbglogf() {
     echo -e "${msg}" | tee -a "${1}"
 }
 
+# Read the `MUST_GATHER_SINCE` and `MUST_GATHER_SINCE_TIME`
+# from the ENV and export it for use in the gather scripts
+#
+# Acc to spec, only one of `MUST_GATHER_SINCE`
+# or `MUST_GATHER_SINCE_TIME` can be used.
+parse_since_time() {
+    local FILTER_ARGS=""
+
+    # We do not need to validate the values here, they are validated
+    # by the oc cli.
+    # Ref: https://github.com/openshift/oc/commit/1fc5c7d79ff5c2fa19c35b7a004dc99eb3330806
+    if [ -n "${MUST_GATHER_SINCE:-}" ]; then
+        FILTER_ARGS="--since=${MUST_GATHER_SINCE}"
+    fi
+
+    if [ -n "${MUST_GATHER_SINCE_TIME:-}" ]; then
+        FILTER_ARGS="--since-time=${MUST_GATHER_SINCE_TIME}"
+    fi
+
+    # It is possible that user is not providing any filters
+    # We do not export the variable in that case
+    if [ -n "${FILTER_ARGS}" ]; then
+        export LOG_FILTER_ARGS="${FILTER_ARGS}"
+    fi
+
+    # Journalctl doesn't support the same type of since and
+    # since-time args. Adapt the logic for journalctl
+    local JRNL_FILTER=""
+
+    if [ -n "${MUST_GATHER_SINCE:-}" ]; then
+        JRNL_FILTER="${MUST_GATHER_SINCE} ago"
+    fi
+
+    # This section adapts an ISO time like: 2024-04-04T09:23:26Z
+    # To 2024-04-04 09:23:26, a format that journalctl is happy with
+    if [ -n "${MUST_GATHER_SINCE_TIME:-}" ]; then
+        JRNL_FILTER=$(echo "${MUST_GATHER_SINCE_TIME}" | sed 's/T/ /; s/Z//')
+    fi
+
+    # If the var is unset, export the default as 2 days ago
+    if [ -n "${JRNL_FILTER}" ]; then
+        export JCTL_FILTER_ARGS="${JRNL_FILTER}"
+    else
+        export JCTL_FILTER_ARGS="2 days ago"
+    fi
+}
+
 # Export the functions so that the file needs to be sourced only once
 export -f dbglog
 export -f dbglogf
+export -f parse_since_time
