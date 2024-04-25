@@ -18,6 +18,12 @@ procids+=($!)
 gather_ceph_pod_logs &
 procids+=($!)
 
+gather_dr_resources &
+procids+=($!)
+
+gather_odf_client &
+procids+=($!)
+
 # Check if procid array has any values, if so, wait for them to finish
 if [ ${#procids[@]} -ne 0 ]; then
     echo "Waiting on collection scripts to finish."
