@@ -76,11 +76,11 @@ oc_yamls+=("alertmanagerconfig")
 
 for INSTALL_NAMESPACE in $PRODUCT_NAMESPACE $INSTALL_NAMESPACES $MANAGED_FUSION_NAMESPACE $OPERATOR_NAMESPACE; do
      dbglog "collecting dump of namespace ${INSTALL_NAMESPACE}"
-     { oc adm inspect --dest-dir="${BASE_COLLECTION_PATH}" "${LOG_FILTER_ARGS}" ns/"${INSTALL_NAMESPACE}" 2>&1; } | dbglog
+     { oc adm --dest-dir="${BASE_COLLECTION_PATH}" inspect ns/"${INSTALL_NAMESPACE}" 2>&1; } | dbglog
      dbglog "collecting dump of clusterresourceversion"
      for oc_yaml in "${oc_yamls[@]}"; do
           # shellcheck disable=SC2129
-          { oc adm inspect -n "${INSTALL_NAMESPACE}" --dest-dir="${BASE_COLLECTION_PATH}" "${LOG_FILTER_ARGS}" "${oc_yaml}" 2>&1; } | dbglog
+          { oc adm --dest-dir="${BASE_COLLECTION_PATH} inspect "${oc_yaml}" -n "${INSTALL_NAMESPACE}"" "${LOG_FILTER_ARGS}" 2>&1; } | dbglog
      done
 
      # Create the dir for oc_output
@@ -119,43 +119,52 @@ done
 # Create the dir for data from all namespaces
 mkdir -p "${BASE_COLLECTION_PATH}/namespaces/all/"
 
+
+
+
+
+#######{ oc adm --dest-dir="${BASE_COLLECTION_PATH}/namespaces/all/" inspect volumesnapshot --all-namespaces --"${SINCE_TIME}" 2>&1; } | dbglog
+
+
+
+
 # Run the Collection of Resources using must-gather
 for resource in "${resources[@]}"; do
      dbglog "collecting dump of ${resource}"
-     { oc adm inspect --all-namespaces --dest-dir="${BASE_COLLECTION_PATH}/namespaces/all/" "${LOG_FILTER_ARGS}" "${resource}" 2>&1; } | dbglog
+     { oc adm --dest-dir="${BASE_COLLECTION_PATH}/namespaces/all/" inspect --all-namespaces "${resource}" 2>&1; } | dbglog
 done
 
 # For pvc of all namespaces
 dbglog "collecting dump of oc get pvc all namespaces"
 { oc get pvc --all-namespaces; } >>"${BASE_COLLECTION_PATH}/namespaces/all/pvc_all_namespaces"
-{ oc adm inspect --all-namespaces --dest-dir="${BASE_COLLECTION_PATH}/namespaces/all/" "${LOG_FILTER_ARGS}" pvc 2>&1; } | dbglog
+{ oc adm --dest-dir="${BASE_COLLECTION_PATH}/namespaces/all/" inspect pvc --all-namespaces "${LOG_FILTER_ARGS}" 2>&1; } | dbglog
 
 # For volumesnapshot of all namespaces
 dbglog "collecting dump of oc get volumesnapshot all namespaces"
 { oc get volumesnapshot --all-namespaces; } >>"${BASE_COLLECTION_PATH}/namespaces/all/get_volumesnapshot_all_namespaces"
 { oc describe volumesnapshot --all-namespaces; } >>"${BASE_COLLECTION_PATH}/namespaces/all/desc_volumesnapshot_all_namespaces"
-{ oc adm inspect --all-namespaces --dest-dir="${BASE_COLLECTION_PATH}/namespaces/all/" "${LOG_FILTER_ARGS}" volumesnapshot 2>&1; } | dbglog
+{ oc adm --dest-dir="${BASE_COLLECTION_PATH}/namespaces/all/" inspect volumesnapshot --all-namespaces "${LOG_FILTER_ARGS}" 2>&1; } | dbglog
 
 # For volumegroupsnapshot of all namespaces
 dbglog "collecting dump of oc get volumegroupsnapshot all namespaces"
 { oc get volumegroupsnapshot --all-namespaces; } >>"${BASE_COLLECTION_PATH}/namespaces/all/get_volumegroupsnapshot_all_namespaces"
 { oc describe volumegroupsnapshot --all-namespaces; } >>"${BASE_COLLECTION_PATH}/namespaces/all/desc_volumegroupsnapshot_all_namespaces"
-{ oc adm inspect --all-namespaces --dest-dir="${BASE_COLLECTION_PATH}/namespaces/all/" "${LOG_FILTER_ARGS}" volumegroupsnapshot 2>&1; } | dbglog
+{ oc adm --dest-dir="${BASE_COLLECTION_PATH}/namespaces/all/" inspect volumegroupsnapshot --all-namespaces "${LOG_FILTER_ARGS}" 2>&1; } | dbglog
 
 # For obc of all namespaces
 dbglog "collecting dump of oc get obc all namespaces"
 { oc get obc --all-namespaces; } >>"${BASE_COLLECTION_PATH}/namespaces/all/obc_all_namespaces"
-{ oc adm inspect --all-namespaces --dest-dir="${BASE_COLLECTION_PATH}/namespaces/all/" "${LOG_FILTER_ARGS}" obc 2>&1; } | dbglog
+{ oc adm --dest-dir="${BASE_COLLECTION_PATH}/namespaces/all/" inspect obc --all-namespaces "${LOG_FILTER_ARGS}" 2>&1; } | dbglog
 
 # For VolumeReplication of all namespaces
 dbglog "collecting dump of oc get volumereplication all namespaces"
 { oc get volumereplication --all-namespaces; } >>"${BASE_COLLECTION_PATH}/namespaces/all/vr_all_namespaces"
-{ oc adm inspect --all-namespaces --dest-dir="${BASE_COLLECTION_PATH}/namespaces/all/" "${LOG_FILTER_ARGS}" volumereplication 2>&1; } | dbglog
+{ oc adm --dest-dir="${BASE_COLLECTION_PATH}/namespaces/all/" inspect volumereplication --all-namespaces "${LOG_FILTER_ARGS}" 2>&1; } | dbglog
 
 # For VolumeReplicationGroups of all namespaces
 dbglog "collecting dump of oc get volumereplicationgroups all namespaces"
 { oc get volumereplicationgroups --all-namespaces; } >>"${BASE_COLLECTION_PATH}/namespaces/all/vrg_all_namespaces"
-{ oc adm inspect --all-namespaces --dest-dir="${BASE_COLLECTION_PATH}/namespaces/all/" "${LOG_FILTER_ARGS}" vrg 2>&1; } | dbglog
+{ oc adm --dest-dir="${BASE_COLLECTION_PATH}/namespaces/all/" inspect vrg --all-namespaces "${LOG_FILTER_ARGS}" 2>&1; } | dbglog
 
 # Collect details of storageclaim of all namespaces for managed services
 dbglog "collecting dump of oc get storageclaim all namespaces"
