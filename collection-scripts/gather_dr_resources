@@ -28,7 +28,7 @@ dr_resources+=(configmap)
 dr_resources+=(pods -owide)
 
 dbglog "collecting dump of openshift-dr-system namespace"
-{ oc adm inspect --dest-dir="${BASE_COLLECTION_PATH}" ns/"${NAMESPACE}" 2>&1; } | dbglog
+{ oc adm inspect --dest-dir="${BASE_COLLECTION_PATH}" ${LOG_FILTER_ARGS:+"${LOG_FILTER_ARGS}"} ns/"${NAMESPACE}" 2>&1; } | dbglog
 
 # Create the dir for oc_output for openshift-dr-system namespace
 mkdir -p "${BASE_COLLECTION_PATH}/namespaces/${NAMESPACE}/oc_output/"
