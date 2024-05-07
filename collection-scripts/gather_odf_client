@@ -22,7 +22,7 @@ commands_get+=("subscription")
 
 client_commands_get=()
 client_commands_get+=("storageclients")
-client_commands_get+=("storageclassclaims")
+client_commands_get+=("storageclaim")
 
 # YAML List
 oc_yamls=()
@@ -35,7 +35,7 @@ oc_yamls+=("subscription")
 
 client_oc_yamls=()
 client_oc_yamls+=("storageclients")
-client_oc_yamls+=("storageclassclaims")
+client_oc_yamls+=("storageclaim")
 
 # OC desc List
 commands_desc=()
@@ -49,7 +49,7 @@ commands_desc+=("storageclients")
 
 client_commands_desc=()
 client_commands_desc+=("storageclients")
-client_commands_desc+=("storageclassclaims")
+client_commands_desc+=("storageclaim")
 
 for INSTALL_NAMESPACE in $CLIENT_OPERATOR_NAMESPACE; do
      dbglog "collecting dump of namespace ${INSTALL_NAMESPACE}"

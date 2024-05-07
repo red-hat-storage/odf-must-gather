@@ -42,7 +42,7 @@ commands_get+=("configmap")
 commands_get+=("rolebinding")
 commands_get+=("storageconsumer")
 commands_get+=("storageprofiles")
-commands_get+=("storageclassrequest")
+commands_get+=("storagerequest")
 commands_get+=("alertmanager")
 commands_get+=("alertmanagerconfig")
 commands_get+=("prometheus")
@@ -57,7 +57,7 @@ commands_desc+=("storagecluster")
 commands_desc+=("storagesystem")
 commands_desc+=("storageconsumer")
 commands_desc+=("storageprofiles")
-commands_desc+=("storageclassrequest")
+commands_desc+=("storagerequest")
 commands_desc+=("alertmanager")
 commands_desc+=("prometheus")
 commands_desc+=("alertmanagerconfig")
@@ -69,7 +69,7 @@ oc_yamls+=("csv")
 oc_yamls+=("hpa")
 oc_yamls+=("subscription")
 oc_yamls+=("installplan")
-oc_yamls+=("storageclassrequest")
+oc_yamls+=("storagerequest")
 oc_yamls+=("alertmanager")
 oc_yamls+=("prometheus")
 oc_yamls+=("alertmanagerconfig")
@@ -157,12 +157,12 @@ dbglog "collecting dump of oc get volumereplicationgroups all namespaces"
 { oc get volumereplicationgroups --all-namespaces; } >>"${BASE_COLLECTION_PATH}/namespaces/all/vrg_all_namespaces"
 { oc adm inspect --all-namespaces --dest-dir="${BASE_COLLECTION_PATH}/namespaces/all/" "${LOG_FILTER_ARGS}" vrg 2>&1; } | dbglog
 
-# Collect details of storageclassclaim of all namespaces for managed services
-dbglog "collecting dump of oc get storageclassclaim all namespaces"
-if [ -n "$(oc get storageclassclaim --no-headers -A | awk '{print $2}')" ]; then
-     { oc get storageclassclaim --all-namespaces; } >>"${BASE_COLLECTION_PATH}/namespaces/all/get_storageclassclaim_all_ns"
-     { oc describe storageclassclaim --all-namespaces; } >>"${BASE_COLLECTION_PATH}/namespaces/all/desc_storageclassclaim_all_ns"
-     { oc get storageclassclaim -oyaml --all-namespaces; } >>"${BASE_COLLECTION_PATH}/namespaces/all/get_yaml_storageclassclaim_all_ns"
+# Collect details of storageclaim of all namespaces for managed services
+dbglog "collecting dump of oc get storageclaim all namespaces"
+if [ -n "$(oc get storageclaim --no-headers -A | awk '{print $2}')" ]; then
+     { oc get storageclaim --all-namespaces; } >>"${BASE_COLLECTION_PATH}/namespaces/all/get_storageclaim_all_ns"
+     { oc describe storageclaim --all-namespaces; } >>"${BASE_COLLECTION_PATH}/namespaces/all/desc_storageclaim_all_ns"
+     { oc get storageclaim -oyaml --all-namespaces; } >>"${BASE_COLLECTION_PATH}/namespaces/all/get_yaml_storageclaim_all_ns"
 fi
 
 # Collect details of managedfusionoffering of all namespaces for managed services
