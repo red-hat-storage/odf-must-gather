@@ -4,8 +4,7 @@
 # If it is not defined, use PWD instead
 BASE_COLLECTION_PATH=${BASE_COLLECTION_PATH:-"$(pwd)"}
 
-STORAGE_CLIENT_NAMESPACE=$(oc get storageclients -A --no-headers | awk '{print $1}')
-CLIENT_OPERATOR_NAMESPACE=$(oc get subscriptions -A --no-headers | grep ocs-client-operator | awk '{print $1}')
+CLIENT_OPERATOR_NAMESPACE=$(oc get deploy -l app=ocs-client-operator -A --no-headers | awk '{print $1}')
 
 # collection path for OC commands
 mkdir -p "${BASE_COLLECTION_PATH}/odf-client/oc_output/"
@@ -19,10 +18,12 @@ commands_get+=("secrets")
 commands_get+=("configmaps")
 commands_get+=("cronjobs")
 commands_get+=("subscription")
+commands_get+=("services")
 
 client_commands_get=()
 client_commands_get+=("storageclients")
 client_commands_get+=("storageclaim")
+client_commands_get+=("validatingwebhookconfiguration")
 
 # YAML List
 oc_yamls=()
@@ -32,6 +33,7 @@ oc_yamls+=("secrets")
 oc_yamls+=("configmaps")
 oc_yamls+=("cronjobs")
 oc_yamls+=("subscription")
+oc_yamls+=("services")
 
 client_oc_yamls=()
 client_oc_yamls+=("storageclients")
@@ -45,11 +47,13 @@ commands_desc+=("secrets")
 commands_desc+=("configmaps")
 commands_desc+=("cronjobs")
 commands_desc+=("subscription")
+commands_desc+=("services")
 commands_desc+=("storageclients")
 
 client_commands_desc=()
 client_commands_desc+=("storageclients")
 client_commands_desc+=("storageclaim")
+client_commands_desc+=("validatingwebhookconfiguration")
 
 for INSTALL_NAMESPACE in $CLIENT_OPERATOR_NAMESPACE; do
      dbglog "collecting dump of namespace ${INSTALL_NAMESPACE}"
@@ -80,33 +84,26 @@ for INSTALL_NAMESPACE in $CLIENT_OPERATOR_NAMESPACE; do
      done
 done
 
-for INSTALL_NAMESPACE in $STORAGE_CLIENT_NAMESPACE; do
-     dbglog "collecting dump of namespace ${INSTALL_NAMESPACE}"
-     { oc adm inspect --dest-dir="${BASE_COLLECTION_PATH}" ${LOG_FILTER_ARGS:+"${LOG_FILTER_ARGS}"} ns/"${INSTALL_NAMESPACE}" 2>&1; } | dbglog
-     # Run the Collection of oc yaml outputs
-     for oc_yaml in "${client_oc_yamls[@]}"; do
-          # shellcheck disable=SC2129
-          { oc adm inspect -n "${INSTALL_NAMESPACE}" --dest-dir="${BASE_COLLECTION_PATH}" ${LOG_FILTER_ARGS:+"${LOG_FILTER_ARGS}"} "${oc_yaml}" 2>&1; } | dbglog
-     done
+# Run the Collection of oc yaml outputs
+for oc_yaml in "${client_oc_yamls[@]}"; do
+     # shellcheck disable=SC2129
+     { oc adm inspect -n "${INSTALL_NAMESPACE}" --dest-dir="${BASE_COLLECTION_PATH}" ${LOG_FILTER_ARGS:+"${LOG_FILTER_ARGS}"} "${oc_yaml}" 2>&1; } | dbglog
+done
 
-     # Create the dir for oc_output
-     mkdir -p "${BASE_COLLECTION_PATH}/namespaces/${INSTALL_NAMESPACE}/oc_output/"
+# Run the Collection of Resources to list
+for command_get in "${client_commands_get[@]}"; do
+     dbglog "collecting oc command ${command_get}"
+     COMMAND_OUTPUT_FILE=${BASE_COLLECTION_PATH}/${command_get// /_}
+     # shellcheck disable=SC2086
+     { oc get ${command_get} -n ${INSTALL_NAMESPACE}; } >>"${COMMAND_OUTPUT_FILE}"
+done
 
-     # Run the Collection of Resources to list
-     for command_get in "${client_commands_get[@]}"; do
-          dbglog "collecting oc command ${command_get}"
-          COMMAND_OUTPUT_FILE=${BASE_COLLECTION_PATH}/namespaces/${INSTALL_NAMESPACE}/oc_output/${command_get// /_}
-          # shellcheck disable=SC2086
-          { oc get ${command_get} -n ${INSTALL_NAMESPACE}; } >>"${COMMAND_OUTPUT_FILE}"
-     done
-
-     # Run the Collection of OC desc commands
-     for command_desc in "${client_commands_desc[@]}"; do
-          dbglog "collecting oc describe command ${command_desc}"
-          COMMAND_OUTPUT_FILE=${BASE_COLLECTION_PATH}/namespaces/${INSTALL_NAMESPACE}/oc_output/${command_desc// /_}
-          # shellcheck disable=SC2086
-          { oc describe ${command_desc} -n ${INSTALL_NAMESPACE}; } >>"${COMMAND_OUTPUT_FILE}"
-     done
+# Run the Collection of OC desc commands
+for command_desc in "${client_commands_desc[@]}"; do
+     dbglog "collecting oc describe command ${command_desc}"
+     COMMAND_OUTPUT_FILE=${BASE_COLLECTION_PATH}/${command_desc// /_}
+     # shellcheck disable=SC2086
+     { oc describe ${command_desc} -n ${INSTALL_NAMESPACE}; } >>"${COMMAND_OUTPUT_FILE}"
 done
 
 # collect csidriver details
