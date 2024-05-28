@@ -170,25 +170,25 @@ if [ "$noobaa" == true ]; then
     pids+=($!)
 fi
 
-if [ "$ceph" == true ]; then
+if [ "$ceph" == true ] && [ "$odf" == false ]; then
     echo "Collect ceph pod logs..."
     gather_ceph_pod_logs &
     pids+=($!)
 fi
 
-if [ "$cephlogs" == true ]; then
+if [ "$cephlogs" == true ] && [ "$odf" == false ]; then
     echo "Collect ceph daemon logs..."
     gather_ceph_logs ${BASE_COLLECTION_PATH} &
     pids+=($!)
 fi
 
-if [ "$namespaced" == true ]; then
+if [ "$namespaced" == true ] && [ "$odf" == false ]; then
     echo "Collect namespaced logs..."
     gather_namespaced_resources ${BASE_COLLECTION_PATH} &
     pids+=($!)
 fi
 
-if [ "$clusterscoped" == true ]; then
+if [ "$clusterscoped" == true ] && [ "$odf" == false ]; then
     echo "Collect clusterscoped logs..."
     gather_clusterscoped_resources ${BASE_COLLECTION_PATH} &
     pids+=($!)
