@@ -20,7 +20,7 @@ resources=()
 # resources+=(storageclusters)
 # resources+=(storagesystem)
 
-# collect OB/OBC resoureces
+# collect OB/OBC resources
 resources+=(objectbuckets)
 
 # collection path for OC commands

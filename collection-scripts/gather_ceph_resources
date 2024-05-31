@@ -14,6 +14,7 @@ ceph_resources+=(cephblockpools)
 ceph_resources+=(cephfilesystems)
 ceph_resources+=(cephclient)
 ceph_resources+=(cephfilesystemsubvolumegroups)
+ceph_resources+=(cephblockpoolradosnamespaces.ceph.rook.io)
 
 # Ceph commands
 ceph_commands=()
@@ -199,68 +200,58 @@ for ns in $namespaces; do
             done
         done
 
-        # Collecting rados object information for RBD PVs and snapshots
-        COMMAND_OUTPUT_FILE=${COMMAND_OUTPUT_DIR}/rados_rbd_objects
-        # Inspecting ceph block pools for ceph rbd
-        blockpools=$(timeout 60 oc get cephblockpools.ceph.rook.io -n "${ns}" -o jsonpath="{range .items[*]}{@.metadata.name}{'\n'}{end}")
-        for bp in $blockpools; do
-            { printf "Name of the block pool: %s\n" "${bp}" >>"${COMMAND_OUTPUT_FILE}"; }
-            # List omapkeys in csi.volumes.default in each block pool
-            pvcobjs=$(timeout 60 oc -n "${ns}" exec "${HOSTNAME}"-helper -- bash -c "rados listomapkeys csi.volumes.default --pool=${bp}")
-            # Get the omap details of each PVC object
-            for pvcobj in $pvcobjs; do
-                { printf "Name of the pvc object: %s\n" "${pvcobj}" >>"${COMMAND_OUTPUT_FILE}"; }
-                # getomapval writes the UUID to a file inside helper pod
-                { timeout 120 oc -n "${ns}" exec "${HOSTNAME}"-helper -- bash -c "rados getomapval csi.volumes.default ${pvcobj} --pool=${bp} uuidfile"; }
-                # Get UUID from the file
-                UUID=$(oc -n "${ns}" exec "${HOSTNAME}"-helper -- bash -c "cat uuidfile")
-                { timeout 120 oc -n "${ns}" exec "${HOSTNAME}"-helper -- bash -c "rados listomapvals csi.volume.${UUID} --pool=${bp}" >>"${COMMAND_OUTPUT_FILE}"; } >>"${COMMAND_ERR_OUTPUT_DIR}"/gather-rados-"${pvcobj}"-debug.log 2>&1 &
-                pids_ceph+=($!)
-            done
-            # List omapkeys in csi.snaps.default in the block pool
-            snapobjs=$(timeout 60 oc -n "${ns}" exec "${HOSTNAME}"-helper -- bash -c "rados listomapkeys csi.snaps.default --pool=${bp}")
-            # Get the omap details of each snap object
-            for snapobj in $snapobjs; do
-                { printf "Name of snap object: %s\n" "${snapobj}" >>"${COMMAND_OUTPUT_FILE}"; }
-                # getomapval writes the UUID to a file inside helper pod
-                { timeout 120 oc -n "${ns}" exec "${HOSTNAME}"-helper -- bash -c "rados getomapval csi.snaps.default ${snapobj} --pool=${bp} uuidfile"; }
-                # Get UUID from the file
-                UUID=$(oc -n "${ns}" exec "${HOSTNAME}"-helper -- bash -c "cat uuidfile")
-                { timeout 120 oc -n "${ns}" exec "${HOSTNAME}"-helper -- bash -c "rados listomapvals csi.snap.${UUID} --pool=${bp}" >>"${COMMAND_OUTPUT_FILE}"; } >>"${COMMAND_ERR_OUTPUT_DIR}"/gather-rados-"${snapobj}"-debug.log 2>&1 &
-                pids_ceph+=($!)
-            done
-        done
+        collect_image_info(){
+            dbglogf "${CEPH_GATHER_DBGLOG}" "collecting vol and snapshot info for ${image}"
+            collect_info() {
+                local pool=$1
+                local image=$2
+                local namespace=$3
+        
+                local ns_flag=""
+                if [ -n "${namespace}" ]; then
+                ns_flag="--namespace $namespace"
+                fi
 
-        # collecting trash list for ceph rbd
-        dbglogf "${CEPH_GATHER_DBGLOG}" "collecting trash list for ceph rbd"
-        # Inspecting ceph block pools for ceph rbd
-        blockpools=$(timeout 60 oc get cephblockpools.ceph.rook.io -n "${ns}" -o jsonpath="{range .items[*]}{@.metadata.name}{'\n'}{end}")
-        for bp in $blockpools; do
-            COMMAND_OUTPUT_FILE=${COMMAND_OUTPUT_DIR}/rbd_trash_ls_"${bp}"
-            { timeout 120 oc -n "${ns}" exec "${HOSTNAME}"-helper -- bash -c "rbd trash ls --pool $bp --format=json" >>"${COMMAND_OUTPUT_FILE}"; } >>"${COMMAND_ERR_OUTPUT_DIR}"/gather-rbd-trash-ls-"${bp}"-json-debug.log 2>&1 &
-        done
+                local image_info_p="$image_info $image --pool $pool $ns_flag"
+                local status_info_p="$status_info $image --pool $pool $ns_flag"
+                local snap_info_p="$snap_info $image --pool $pool $ns_flag"
 
-        # Collecting snapshot info for ceph rbd volumes
-        dbglogf "${CEPH_GATHER_DBGLOG}" "collecting snapshot info for ceph rbd volumes"
-        COMMAND_OUTPUT_FILE=${COMMAND_OUTPUT_DIR}/rbd_vol_and_snap_info
+                printf "Collecting image info for: %s/%s\n" "$pool" "$image"
+                timeout 120 oc -n "${ns}" exec "${HOSTNAME}"-helper -- bash -c "$image_info_p" 2>>"${COMMAND_ERR_OUTPUT_DIR}"/gather-rbd-image-"$image"-debug.log
+                printf "Collecting image status for: %s/%s\n" "$pool" "$image"
+                timeout 120 oc -n "${ns}" exec "${HOSTNAME}"-helper -- bash -c "$status_info_p" 2>>"${COMMAND_ERR_OUTPUT_DIR}"/gather-rbd-image-status-"$image"-debug.log
+                printf "Collecting snap info for: %s/%s\n" "$pool" "$image"
+                timeout 120 oc -n "${ns}" exec "${HOSTNAME}"-helper -- bash -c "$snap_info_p" 2>>"${COMMAND_ERR_OUTPUT_DIR}"/gather-rbd-snap-json-"$image"-debug.log
+            }
+
+            collect_info "$1" "$2" "$3" >>"${COMMAND_OUTPUT_DIR}"/rbd_vol_and_snap_info_"$2".part &
+            pids_rbd+=($!)
+        }
+        
         # Inspecting ceph block pools for ceph rbd
         blockpools=$(timeout 60 oc get cephblockpools.ceph.rook.io -n "${ns}" -o jsonpath="{range .items[*]}{@.metadata.name}{'\n'}{end}")
         for bp in $blockpools; do
-            printf "Collecting image and snap info for images in: %s\n" "${bp}" >>"${COMMAND_OUTPUT_FILE}"
-            images=$(timeout 60 oc -n "${ns}" exec "${HOSTNAME}"-helper -- bash -c "rbd ls -p $bp")
+            list_rbd="rbd ls -p"
+            image_info="rbd info"
+            status_info="rbd status"
+            snap_info="rbd snap ls --all --format=json --pretty-format"
+            rbd_trash="rbd trash ls --format=json --pool"
+            pvc_obj="rados listomapkeys csi.volumes.default --pool="
+            uuidfile="rados getomapval csi.volumes.default"
+            listomap="rados listomapvals csi.volume."
+            snap_obj="rados listomapkeys csi.snaps.default --pool="
+            uuidfile_snap="rados getomapval csi.snaps.default"
+            listsnapobj="rados listomapvals csi.snap."
+
+            dbglogf "${CEPH_GATHER_DBGLOG}" "list-rbd: ${list_rbd} ${bp}"
+            # Collecting rados object information for RBD PVs and snapshot
+            COMMAND_OUTPUT_FILE=${COMMAND_OUTPUT_DIR}/rbd_vol_and_snap_info_"${bp}"   
+            printf "Name of the block pool: %s\n" "${bp}" >>"${COMMAND_OUTPUT_FILE}"                             
+            dbglogf "${CEPH_GATHER_DBGLOG}" "Collecting image and snap info for images in: ${bp}"
+            images=$(timeout 60 oc -n "${ns}" exec "${HOSTNAME}"-helper -- bash -c "${list_rbd} ${bp}")
             pids_rbd=()
             for image in $images; do
-                dbglogf "${CEPH_GATHER_DBGLOG}" "collecting vol and snapshot info for ${image}"
-                {
-                    printf "Collecting image info for: %s/%s\n" "${bp}" "${image}"
-                    timeout 120 oc -n "${ns}" exec "${HOSTNAME}"-helper -- bash -c "rbd info $image --pool $bp" 2>>"${COMMAND_ERR_OUTPUT_DIR}"/gather-rbd-image-"${image}"-debug.log
-                    printf "Collecting image status for: %s/%s\n" "${bp}" "${image}"
-                    timeout 120 oc -n "${ns}" exec "${HOSTNAME}"-helper -- bash -c "rbd status $image --pool $bp" 2>>"${COMMAND_ERR_OUTPUT_DIR}"/gather-rbd-image-status-"${image}"-debug.log
-                    printf "Collecting snap info for: %s/%s\n" "${bp}" "${image}"
-                    timeout 120 oc -n "${ns}" exec "${HOSTNAME}"-helper -- bash -c "rbd snap ls --all $image --pool $bp" 2>>"${COMMAND_ERR_OUTPUT_DIR}"/gather-rbd-snap-"${image}"-debug.log
-                    timeout 120 oc -n "${ns}" exec "${HOSTNAME}"-helper -- bash -c "rbd snap ls --all --format=json --pretty-format $image --pool $bp" 2>>"${COMMAND_ERR_OUTPUT_DIR}"/gather-rbd-snap-json-"${image}"-debug.log
-                } >>"${COMMAND_OUTPUT_DIR}"/rbd_vol_and_snap_info_"${image}".part &
-                pids_rbd+=($!)
+                collect_image_info "$bp" "$image"
             done
             if [ -n "${pids_rbd[*]}" ]; then
                 # wait for all pids
@@ -269,7 +260,87 @@ for ns in $namespaces; do
             fi
             find "${COMMAND_OUTPUT_DIR}" -name "rbd_vol_and_snap_info_*.part" -print0 | xargs -0 cat >>"${COMMAND_OUTPUT_FILE}"
             find "${COMMAND_OUTPUT_DIR}" -name "rbd_vol_and_snap_info_*.part" -print0 | xargs -0 rm -f
-        done
+                
+            dbglogf "${CEPH_GATHER_DBGLOG}" "Collecting rbd trash ls: ${bp}"
+            COMMAND_OUTPUT_FILE=${COMMAND_OUTPUT_DIR}/rbd_trash_ls_"${bp}"
+            { timeout 120 oc -n "${ns}" exec "${HOSTNAME}"-helper -- bash -c "$rbd_trash $bp" >>"${COMMAND_OUTPUT_FILE}"; } >>"${COMMAND_ERR_OUTPUT_DIR}"/gather-rbd-trash-ls-"${bp}"-json-debug.log 2>&1 &
+                
+            COMMAND_OUTPUT_FILE=${COMMAND_OUTPUT_DIR}/rados_rbd_objects_"${bp}"
+            # List omapkeys in csi.volumes.default in each block pool
+            pvcobjs=$(timeout 60 oc -n "${ns}" exec "${HOSTNAME}"-helper -- bash -c "${pvc_obj}${bp}")
+            # Get the omap details of each PVC object
+            for pvcobj in $pvcobjs; do
+                printf "Name of the pvc object: %s\n" "${pvcobj}" >>"${COMMAND_OUTPUT_FILE}"
+                # getomapval writes the UUID to a file inside helper pod
+                { timeout 120 oc -n "${ns}" exec "${HOSTNAME}"-helper -- bash -c "${uuidfile} ${pvcobj} --pool=${bp} uuidfile"; }
+                # Get UUID from the file
+                UUID=$(oc -n "${ns}" exec "${HOSTNAME}"-helper -- bash -c "cat uuidfile")
+                { timeout 120 oc -n "${ns}" exec "${HOSTNAME}"-helper -- bash -c "${listomap}${UUID} --pool=${bp}" >>"${COMMAND_OUTPUT_FILE}"; } >>"${COMMAND_ERR_OUTPUT_DIR}"/gather-rados-"${pvcobj}"-debug.log 2>&1 &
+                pids_ceph+=($!)      
+            done
+            # List omapkeys in csi.snaps.default in the block pool
+            snapobjs=$(timeout 60 oc -n "${ns}" exec "${HOSTNAME}"-helper -- bash -c "${snap_obj}${bp}")
+            # Get the omap details of each snap object
+            for snapobj in $snapobjs; do
+                printf "Name of snap object: %s\n" "${snapobj}" >>"${COMMAND_OUTPUT_FILE}"
+                # getomapval writes the UUID to a file inside helper pod
+                { timeout 120 oc -n "${ns}" exec "${HOSTNAME}"-helper -- bash -c "${uuidfile_snap} ${snapobj} --pool=${bp} uuidfile"; }
+                # Get UUID from the file
+                UUID=$(oc -n "${ns}" exec "${HOSTNAME}"-helper -- bash -c "cat uuidfile")
+                { timeout 120 oc -n "${ns}" exec "${HOSTNAME}"-helper -- bash -c "${listsnapobj}${UUID} --pool=${bp}" >>"${COMMAND_OUTPUT_FILE}"; } >>"${COMMAND_ERR_OUTPUT_DIR}"/gather-rados-"${snapobj}"-debug.log 2>&1 &
+                pids_ceph+=($!)
+            done         
+
+            # Collecting rados object information for RBD PVs and snapshots under each radosnamespace
+            rados_namespaces=$(timeout 60 oc -n "${ns}" exec "${HOSTNAME}"-helper -- bash -c "rbd -p $bp namespace ls") 
+            for rns in $rados_namespaces; do
+                list_rbd_p="${list_rbd} ${bp} --namespace ${rns}"                    
+                COMMAND_OUTPUT_FILE=${COMMAND_OUTPUT_DIR}/rbd_vol_and_snap_info_"${bp}"_"${rns}"               
+                dbglogf "${CEPH_GATHER_DBGLOG}" "Collecting image and snap info for images in: ${bp} ${rns} ${list_rbd_p}"
+                images=$(timeout 60 oc -n "${ns}" exec "${HOSTNAME}"-helper -- bash -c "$list_rbd_p")
+                pids_rbd=()
+                for image in $images; do
+                    collect_image_info "$bp" "$image" "$rns"
+                done
+                if [ -n "${pids_rbd[*]}" ]; then
+                    # wait for all pids
+                    dbglog "waiting for ${pids_rbd[*]} to terminate"
+                    wait "${pids_rbd[@]}"
+                fi
+                find "${COMMAND_OUTPUT_DIR}" -name "rbd_vol_and_snap_info_*.part" -print0 | xargs -0 cat >>"${COMMAND_OUTPUT_FILE}"
+                find "${COMMAND_OUTPUT_DIR}" -name "rbd_vol_and_snap_info_*.part" -print0 | xargs -0 rm -f
+                
+                dbglogf "${CEPH_GATHER_DBGLOG}" "Collecting rbd trash ls for rados namespace: ${bp} ${rns}"
+                COMMAND_OUTPUT_FILE=${COMMAND_OUTPUT_DIR}/rbd_trash_ls_"${bp}"_"${rns}"
+                { timeout 120 oc -n "${ns}" exec "${HOSTNAME}"-helper -- bash -c "$rbd_trash $bp --namespace $rns" >>"${COMMAND_OUTPUT_FILE}"; } >>"${COMMAND_ERR_OUTPUT_DIR}"/gather-rbd-trash-ls-"${bp}"-"${rns}"-json-debug.log 2>&1 &
+                
+                COMMAND_OUTPUT_FILE=${COMMAND_OUTPUT_DIR}/rados_rbd_objects_"${bp}"_"${rns}"
+                # List omapkeys in csi.volumes.default in each block pool
+                pvcobjs=$(timeout 60 oc -n "${ns}" exec "${HOSTNAME}"-helper -- bash -c "${pvc_obj}${bp} --namespace ${rns}")
+                # Get the omap details of each PVC object
+                for pvcobj in $pvcobjs; do
+                    printf "Name of the pvc object: %s\n" "${pvcobj}" >>"${COMMAND_OUTPUT_FILE}"
+                    # getomapval writes the UUID to a file inside helper pod
+                    { timeout 120 oc -n "${ns}" exec "${HOSTNAME}"-helper -- bash -c "${uuidfile} ${pvcobj} --pool=${bp} --namespace ${rns} uuidfile"; }
+                    # Get UUID from the file
+                    UUID=$(oc -n "${ns}" exec "${HOSTNAME}"-helper -- bash -c "cat uuidfile")
+                    { timeout 120 oc -n "${ns}" exec "${HOSTNAME}"-helper -- bash -c "${listomap}${UUID} --pool=${bp} --namespace ${rns}" >>"${COMMAND_OUTPUT_FILE}"; } >>"${COMMAND_ERR_OUTPUT_DIR}"/gather-rados-"${pvcobj}"-debug.log 2>&1 &
+                    pids_ceph+=($!)
+                done
+                # List omapkeys in csi.snaps.default in the block pool
+                snapobjs=$(timeout 60 oc -n "${ns}" exec "${HOSTNAME}"-helper -- bash -c "${snap_obj}${bp} --namespace ${rns}")
+                # Get the omap details of each snap object
+                for snapobj in $snapobjs; do
+                    printf "Name of snap object: %s\n" "${snapobj}" >>"${COMMAND_OUTPUT_FILE}"
+                    # getomapval writes the UUID to a file inside helper pod
+                    { timeout 120 oc -n "${ns}" exec "${HOSTNAME}"-helper -- bash -c "${uuidfile_snap} ${snapobj} --pool=${bp} --namespace ${rns} uuidfile"; }
+                    # Get UUID from the file
+                    UUID=$(oc -n "${ns}" exec "${HOSTNAME}"-helper -- bash -c "cat uuidfile")
+                    { timeout 120 oc -n "${ns}" exec "${HOSTNAME}"-helper -- bash -c "${listsnapobj}${UUID} --pool=${bp} --namespace ${rns}" >>"${COMMAND_OUTPUT_FILE}"; } >>"${COMMAND_ERR_OUTPUT_DIR}"/gather-rados-"${snapobj}"-debug.log 2>&1 &
+                    pids_ceph+=($!)
+                done
+            done
+        done           
 
         # CRI-O have a limitation to upper limit to number of PIDs, so we found that when `ps aux | wc -l` exceeds 115 the resource cannot be collected
         # hence to keep a buffer, we are waiting for 2 seconds until we have PIDs available, https://access.redhat.com/solutions/5597061
