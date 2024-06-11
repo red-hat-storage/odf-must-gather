@@ -142,7 +142,7 @@ pre-install.sh ${BASE_COLLECTION_PATH}
 # Process the options
 if [ "$odf" == true ]; then
     echo "Collect ODF logs..."
-    gather_ceph_pod_logs &
+    gather_ceph_pod_logs ${BASE_COLLECTION_PATH} &
     pids+=($!)
     gather_ceph_logs &
     pids+=($!)
