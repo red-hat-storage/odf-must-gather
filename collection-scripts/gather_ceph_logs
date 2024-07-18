@@ -17,6 +17,16 @@ for ns in $namespaces; do
         oc rsync -n "${ns}" "$(oc get pods -n "${ns}" --no-headers | grep "${node//./}-debug" | awk '{print $1}')":/host/var/lib/rook/"${ns}"/log "${CEPH_DAEMON_LOG_OUTPUT_DIR}"
     }
 
+    # Collecting csi and ceph daemon logs
+    csi_log_collection() {
+        dbglog "collecting csi and ceph daemon logs from node ${node}"
+        # as per the correction we are keeping both /var/lib/rook & /var/log/ceph for ceph pods, as to not break anything
+        oc rsync -n "${ns}" "$(oc get pods -n "${ns}" --no-headers | grep "${node//./}-debug" | awk '{print $1}')":/host/var/log/ceph/ "${CEPH_DAEMON_LOG_OUTPUT_DIR}"
+        oc rsync -n "${ns}" "$(oc get pods -n "${ns}" --no-headers | grep "${node//./}-debug" | awk '{print $1}')":/host/var/lib/rook/"${ns}".rbd.csi.ceph.com/log "${CSI_LOG_OUTPUT_DIR}"
+        oc rsync -n "${ns}" "$(oc get pods -n "${ns}" --no-headers | grep "${node//./}-debug" | awk '{print $1}')":/host/var/lib/rook/"${ns}".cephfs.csi.ceph.com/log "${CSI_LOG_OUTPUT_DIR}"
+        oc rsync -n "${ns}" "$(oc get pods -n "${ns}" --no-headers | grep "${node//./}-debug" | awk '{print $1}')":/host/var/lib/rook/"${ns}".nfs.csi.ceph.com/log "${CSI_LOG_OUTPUT_DIR}"
+    }
+
     crash_core_collection() {
         dbglog "collecting crash core dump from node ${node}"
         oc rsync -n "${ns}" "$(oc get pods -n "${ns}" --no-headers | grep "${node//./}"-debug | awk '{print $1}')":/host/var/lib/rook/"${ns}"/crash/ "${CRASH_OUTPUT_DIR}"
@@ -45,15 +55,18 @@ CMDS
         dbglog "collecting crash, journal and volume logs from node ${node}"
         CRASH_OUTPUT_DIR=${CEPH_COLLECTION_PATH}/crash_${node}
         CEPH_DAEMON_LOG_OUTPUT_DIR=${CEPH_COLLECTION_PATH}/ceph_daemon_log_${node}
+        CSI_LOG_OUTPUT_DIR=${CEPH_COLLECTION_PATH}/csi_log_${node}
         JOURNAL_OUTPUT_DIR=${CEPH_COLLECTION_PATH}/journal_${node}
         KERNEL_OUTPUT_DIR=${CEPH_COLLECTION_PATH}/kernel_${node}
         COREDUMP_OUTPUT_DIR=${CEPH_COLLECTION_PATH}/coredump_${node}
         mkdir -p "${CRASH_OUTPUT_DIR}"
         mkdir -p "${CEPH_DAEMON_LOG_OUTPUT_DIR}"
+        mkdir -p "${CSI_LOG_OUTPUT_DIR}"
         mkdir -p "${JOURNAL_OUTPUT_DIR}"
         mkdir -p "${KERNEL_OUTPUT_DIR}"
         mkdir -p "${COREDUMP_OUTPUT_DIR}"
         ceph_daemon_log_collection &
+        csi_log_collection &
         pids_log+=($!)
         crash_core_collection &
         pids_log+=($!)

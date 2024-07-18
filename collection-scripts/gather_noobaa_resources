@@ -33,7 +33,7 @@ mkdir -p "${NOOBAA_COLLLECTION_PATH}/raw_output/}"
 
 # Save the information of all Postgres DBs in the NooBaa DB pod
 dbglog "Collecting MCG database information..."
-oc rsh --namespace openshift-storage noobaa-db-pg-0 psql -d nbcore -c '\pset pager off' -c '\x on' -c '\list+' &>"${NOOBAA_COLLLECTION_PATH}"/raw_output/db_list.txt 2>&1
+oc rsh --namespace openshift-storage noobaa-db-pg-0 psql -d nbcore -c '\pset pager off' -c '\list+' -c '\dt+' &>"${NOOBAA_COLLLECTION_PATH}"/raw_output/db_list.txt 2>&1
 
 # Run the Collection of Noobaa cli using must-gather
 # shellcheck disable=SC2086

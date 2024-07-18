@@ -207,3 +207,17 @@ if [ -n "$(oc get network-attachment-definitions --no-headers -A | awk '{print $
      { oc get network-attachment-definitions -oyaml --all-namespaces; } >>"${BASE_COLLECTION_PATH}/namespaces/all/get_yaml_net_attach_def_all_ns"
      { oc describe network-attachment-definitions --all-namespaces; } >>"${BASE_COLLECTION_PATH}/namespaces/all/desc_net_attach_def_all_ns"
 fi
+
+dbglog "collecting dump of oc get encryptionkeyrotationjob all namespaces"
+if [ -n "$(oc get encryptionkeyrotationjob --no-headers -A | awk '{print $1}')" ]; then
+     { oc get encryptionkeyrotationjob --all-namespaces; } >>"${BASE_COLLECTION_PATH}/namespaces/all/get_encryptionkeyrotationjob_all_ns"
+     { oc describe encryptionkeyrotationjob --all-namespaces; } >>"${BASE_COLLECTION_PATH}/namespaces/all/desc_encryptionkeyrotationjob_all_ns"
+     { oc get encryptionkeyrotationjob -oyaml --all-namespaces; } >>"${BASE_COLLECTION_PATH}/namespaces/all/get_yaml_encryptionkeyrotationjob_all_ns"
+fi
+
+dbglog "collecting dump of oc get encryptionkeyrotationcronjob all namespaces"
+if [ -n "$(oc get encryptionkeyrotationcronjob --no-headers -A | awk '{print $1}')" ]; then
+     { oc get encryptionkeyrotationcronjob --all-namespaces; } >>"${BASE_COLLECTION_PATH}/namespaces/all/get_encryptionkeyrotationcronjob_all_ns"
+     { oc describe encryptionkeyrotationcronjob --all-namespaces; } >>"${BASE_COLLECTION_PATH}/namespaces/all/desc_encryptionkeyrotationcronjob_all_ns"
+     { oc get encryptionkeyrotationcronjob -oyaml --all-namespaces; } >>"${BASE_COLLECTION_PATH}/namespaces/all/get_yaml_encryptionkeyrotationcronjob_all_ns"
+fi
