@@ -166,7 +166,7 @@ if [ -n "$(oc get storageclaim --no-headers -A | awk '{print $2}')" ]; then
 fi
 
 # Collect details of managedfusionoffering of all namespaces for managed services
-echo "collecting dump of oc get managedfusionoffering all namespaces" | tee -a "${BASE_COLLECTION_PATH}/gather-debug.log"
+dbglog "collecting dump of oc get managedfusionoffering all namespaces"
 if [ -n "$(oc get managedfusionoffering --no-headers -A | awk '{print $1}')" ]; then
      { oc get managedfusionoffering --all-namespaces; } >>"${BASE_COLLECTION_PATH}/namespaces/all/get_managedfusionoffering_all_ns"
      { oc describe managedfusionoffering --all-namespaces; } >>"${BASE_COLLECTION_PATH}/namespaces/all/desc_managedfusionoffering_all_ns"
@@ -189,7 +189,7 @@ if [ -n "$(oc get reclaimspacejob --no-headers -A | awk '{print $1}')" ]; then
 fi
 
 dbglog "collecting dump of oc get reclaimspacecronjobs all namespaces"
-if [ -n "$(oc get reclaimspacejob --no-headers -A | awk '{print $1}')" ]; then
+if [ -n "$(oc get reclaimspacecronjobs --no-headers -A | awk '{print $1}')" ]; then
      { oc get reclaimspacecronjobs --all-namespaces; } >>"${BASE_COLLECTION_PATH}/namespaces/all/get_reclaimspacecronjobs_all_ns"
      { oc describe reclaimspacecronjobs --all-namespaces; } >>"${BASE_COLLECTION_PATH}/namespaces/all/desc_reclaimspacecronjobs_all_ns"
      { oc get reclaimspacecronjobs -oyaml --all-namespaces; } >>"${BASE_COLLECTION_PATH}/namespaces/all/get_yaml_reclaimspacecronjobs_all_ns"
@@ -202,7 +202,7 @@ if [ -n "$(oc get networkfence --no-headers -A | awk '{print $1}')" ]; then
      { oc get networkfence -oyaml --all-namespaces; } >>"${BASE_COLLECTION_PATH}/namespaces/all/get_yaml_networkfence_all_ns"
 fi
 
-echo "collecting network-attachment-definitions of oc get network-attachment-definitions all namespaces" | tee -a "${BASE_COLLECTION_PATH}/gather-debug.log"
+dbglog "collecting network-attachment-definitions of oc get network-attachment-definitions all namespaces"
 if [ -n "$(oc get network-attachment-definitions --no-headers -A | awk '{print $1}')" ]; then
      { oc get network-attachment-definitions -oyaml --all-namespaces; } >>"${BASE_COLLECTION_PATH}/namespaces/all/get_yaml_net_attach_def_all_ns"
      { oc describe network-attachment-definitions --all-namespaces; } >>"${BASE_COLLECTION_PATH}/namespaces/all/desc_net_attach_def_all_ns"
