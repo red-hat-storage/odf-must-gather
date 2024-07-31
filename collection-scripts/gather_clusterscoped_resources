@@ -23,6 +23,8 @@ commands_get+=("volumesnapshotclass")
 commands_get+=("volumesnapshotcontent")
 commands_get+=("volumegroupsnapshotclass")
 commands_get+=("volumegroupsnapshotcontent")
+commands_get+=("volumegroupreplicationclass")
+commands_get+=("volumegroupreplicationcontent")
 
 # collect yaml output of OC commands
 oc_yamls=()
@@ -41,6 +43,8 @@ oc_yamls+=("volumesnapshotclass")
 oc_yamls+=("volumesnapshotcontent")
 oc_yamls+=("volumegroupsnapshotclass")
 oc_yamls+=("volumegroupsnapshotcontent")
+oc_yamls+=("volumegroupreplicationclass")
+oc_yamls+=("volumegroupreplicationcontent")
 
 # collect describe output of OC commands
 commands_desc=()
@@ -59,6 +63,8 @@ commands_desc+=("volumesnapshotclass")
 commands_desc+=("volumesnapshotcontent")
 commands_desc+=("volumegroupsnapshotclass")
 commands_desc+=("volumegroupsnapshotcontent")
+commands_desc+=("volumegroupreplicationclass")
+commands_desc+=("volumegroupreplicationcontent")
 
 # collection path for OC commands
 mkdir -p "${BASE_COLLECTION_PATH}/cluster-scoped-resources/oc_output/"
