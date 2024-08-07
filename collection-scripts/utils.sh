@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# shellcheck disable=SC2155
 
 #
 # Please Note:
@@ -79,7 +80,33 @@ parse_since_time() {
     fi
 }
 
+# export_pod_image_details fetches the pod metadata
+# using kubernetes API
+function export_pod_image_details() {
+    # We do not override the hostname in odf-mg, hence hostname = pod name
+    local POD_NAME=$(hostname)
+
+    # Kubernetes API token and endpoints
+    local API_URL="https://kubernetes.default.svc"
+    local NAMESPACE=$(cat /var/run/secrets/kubernetes.io/serviceaccount/namespace)
+    local TOKEN=$(cat /var/run/secrets/kubernetes.io/serviceaccount/token)
+
+    # Get pod metadata
+    local POD_METADATA=$(curl -s --cacert /var/run/secrets/kubernetes.io/serviceaccount/ca.crt \
+        -H "Authorization: Bearer $TOKEN" \
+        "$API_URL/api/v1/namespaces/$NAMESPACE/pods/$POD_NAME")
+
+    # Extract image details
+    local IMAGE=$(echo "$POD_METADATA" | awk -F'"' '/"image":/ {print $4; exit}')
+
+    # Also save the pod metadata to a file
+    echo "$POD_METADATA" >"${BASE_COLLECTION_PATH}"/pod-metadata.json
+
+    dbglog "must-gather is using image: $IMAGE"
+}
+
 # Export the functions so that the file needs to be sourced only once
 export -f dbglog
 export -f dbglogf
 export -f parse_since_time
+export -f export_pod_image_details
