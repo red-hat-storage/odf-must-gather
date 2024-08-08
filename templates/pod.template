@@ -29,7 +29,7 @@ spec:
           name: rook-ceph-mon
           key: ceph-secret
     image: IMAGE_NAME
-    imagePullPolicy: IfNotPresent
+    imagePullPolicy: Always
     name: must-gather-helper
     securityContext:
       privileged: true
