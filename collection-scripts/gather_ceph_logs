@@ -27,6 +27,12 @@ for ns in $namespaces; do
         oc rsync -n "${ns}" "$(oc get pods -n "${ns}" --no-headers | grep "${node//./}-debug" | awk '{print $1}')":/host/var/lib/rook/"${ns}".nfs.csi.ceph.com/log "${CSI_LOG_OUTPUT_DIR}"
     }
 
+    # collect logs from the csi pods if csi is installed using csi-operator
+    csi_operator_log_collection() {
+        dbglog "collecting csi logs from node ${node}"
+        oc rsync -n "${ns}" "$(oc get pods -n "${ns}" --no-headers | grep "${node//./}-debug" | awk '{print $1}')":/host/var/lib/cephcsi "${CSI_LOG_OUTPUT_DIR}"
+    }
+
     crash_core_collection() {
         dbglog "collecting crash core dump from node ${node}"
         oc rsync -n "${ns}" "$(oc get pods -n "${ns}" --no-headers | grep "${node//./}"-debug | awk '{print $1}')":/host/var/lib/rook/"${ns}"/crash/ "${CRASH_OUTPUT_DIR}"
