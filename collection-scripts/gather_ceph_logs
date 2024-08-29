@@ -72,7 +72,9 @@ CMDS
         mkdir -p "${KERNEL_OUTPUT_DIR}"
         mkdir -p "${COREDUMP_OUTPUT_DIR}"
         ceph_daemon_log_collection &
+        pids_log+=($!)
         csi_log_collection &
+        pids_log+=($!)
         csi_operator_log_collection &
         pids_log+=($!)
         crash_core_collection &
