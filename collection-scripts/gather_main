@@ -21,8 +21,15 @@ procids+=($!)
 gather_dr_resources &
 procids+=($!)
 
-gather_odf_client &
-procids+=($!)
+storagecluster_remote=$(oc get storagecluster --all-namespaces  -o yaml | grep -i 'allowRemoteStorageConsumers' || true)
+if [ -n "$storagecluster_remote" ]; then
+    echo "it is provider cluster"
+    gather_odf_client &
+    procids+=($!)
+else
+    echo "it is not provider cluster"
+fi
+
 
 # Check if procid array has any values, if so, wait for them to finish
 if [ ${#procids[@]} -ne 0 ]; then
