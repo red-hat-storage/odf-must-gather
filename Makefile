@@ -37,7 +37,7 @@ endif
 	@oc login --token=$(ODF_MG_TOKEN) --server=https://api.ci.l2s4.p1.openshiftapps.com:6443 1>/dev/null
 
 	@echo "Logging into the CI image registry..."
-	@oc registry login --registry registry.ci.openshift.org &>/dev/null
+	@REGISTRY_AUTH_FILE=~/.docker/config.json oc registry login --registry registry.ci.openshift.org 2>/dev/null
 
 	@echo "Will be using $(IMG_TAG) as the image tag, you can change this using IMG_TAG env var."
 

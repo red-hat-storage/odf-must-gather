@@ -132,6 +132,9 @@ START_TIME=$(date +%r)
 start=$(date +%s)
 dbglog "collection started at: ${START_TIME}"
 
+# Print and export must-gather pod details
+export_pod_image_details
+
 if [ -n "${LOG_FILTER_ARGS:-}" ]; then
     dbglog "Logs will be filtered using: ${LOG_FILTER_ARGS}"
 fi

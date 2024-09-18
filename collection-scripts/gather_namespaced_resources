@@ -74,6 +74,29 @@ oc_yamls+=("alertmanager")
 oc_yamls+=("prometheus")
 oc_yamls+=("alertmanagerconfig")
 
+# collect get output of OC commands for all namespaces
+oc_get_all=()
+oc_get_all+=("pvc")
+oc_get_all+=("volumesnapshot")
+oc_get_all+=("volumegroupnapshot")
+oc_get_all+=("obc")
+oc_get_all+=("volumereplication")
+oc_get_all+=("volumereplicationgroups")
+oc_get_all+=("csiaddonsnode")
+oc_get_all+=("storageclaim")
+oc_get_all+=("managedfusionoffering")
+oc_get_all+=("reclaimspacejob")
+oc_get_all+=("reclaimspacecronjobs")
+oc_get_all+=("networkfence")
+oc_get_all+=("network-attachment-definitions")
+oc_get_all+=("encryptionkeyrotationjob")
+oc_get_all+=("encryptionkeyrotationcronjob")
+oc_get_all+=("operatorconfigs.csi.ceph.io")
+oc_get_all+=("drivers.csi.ceph.io")
+oc_get_all+=("cephconnections.csi.ceph.io")
+oc_get_all+=("clientprofiles.csi.ceph.io")
+oc_get_all+=("clientprofilemappings.csi.ceph.io")
+
 for INSTALL_NAMESPACE in $PRODUCT_NAMESPACE $INSTALL_NAMESPACES $MANAGED_FUSION_NAMESPACE $OPERATOR_NAMESPACE; do
      dbglog "collecting dump of namespace ${INSTALL_NAMESPACE}"
      { oc adm inspect --dest-dir="${BASE_COLLECTION_PATH}" ${LOG_FILTER_ARGS:+"${LOG_FILTER_ARGS}"} ns/"${INSTALL_NAMESPACE}" 2>&1; } | dbglog
@@ -125,99 +148,16 @@ for resource in "${resources[@]}"; do
      { oc adm inspect --all-namespaces --dest-dir="${BASE_COLLECTION_PATH}/namespaces/all/" ${LOG_FILTER_ARGS:+"${LOG_FILTER_ARGS}"} "${resource}" 2>&1; } | dbglog
 done
 
-# For pvc of all namespaces
-dbglog "collecting dump of oc get pvc all namespaces"
-{ oc get pvc --all-namespaces; } >>"${BASE_COLLECTION_PATH}/namespaces/all/pvc_all_namespaces"
-{ oc adm inspect --all-namespaces --dest-dir="${BASE_COLLECTION_PATH}/namespaces/all/" ${LOG_FILTER_ARGS:+"${LOG_FILTER_ARGS}"} pvc 2>&1; } | dbglog
-
-# For volumesnapshot of all namespaces
-dbglog "collecting dump of oc get volumesnapshot all namespaces"
-{ oc get volumesnapshot --all-namespaces; } >>"${BASE_COLLECTION_PATH}/namespaces/all/get_volumesnapshot_all_namespaces"
-{ oc describe volumesnapshot --all-namespaces; } >>"${BASE_COLLECTION_PATH}/namespaces/all/desc_volumesnapshot_all_namespaces"
-{ oc adm inspect --all-namespaces --dest-dir="${BASE_COLLECTION_PATH}/namespaces/all/" ${LOG_FILTER_ARGS:+"${LOG_FILTER_ARGS}"} volumesnapshot 2>&1; } | dbglog
-
-# For volumegroupsnapshot of all namespaces
-dbglog "collecting dump of oc get volumegroupsnapshot all namespaces"
-{ oc get volumegroupsnapshot --all-namespaces; } >>"${BASE_COLLECTION_PATH}/namespaces/all/get_volumegroupsnapshot_all_namespaces"
-{ oc describe volumegroupsnapshot --all-namespaces; } >>"${BASE_COLLECTION_PATH}/namespaces/all/desc_volumegroupsnapshot_all_namespaces"
-{ oc adm inspect --all-namespaces --dest-dir="${BASE_COLLECTION_PATH}/namespaces/all/" ${LOG_FILTER_ARGS:+"${LOG_FILTER_ARGS}"} volumegroupsnapshot 2>&1; } | dbglog
-
-# For obc of all namespaces
-dbglog "collecting dump of oc get obc all namespaces"
-{ oc get obc --all-namespaces; } >>"${BASE_COLLECTION_PATH}/namespaces/all/obc_all_namespaces"
-{ oc adm inspect --all-namespaces --dest-dir="${BASE_COLLECTION_PATH}/namespaces/all/" ${LOG_FILTER_ARGS:+"${LOG_FILTER_ARGS}"} obc 2>&1; } | dbglog
-
-# For VolumeReplication of all namespaces
-dbglog "collecting dump of oc get volumereplication all namespaces"
-{ oc get volumereplication --all-namespaces; } >>"${BASE_COLLECTION_PATH}/namespaces/all/vr_all_namespaces"
-{ oc adm inspect --all-namespaces --dest-dir="${BASE_COLLECTION_PATH}/namespaces/all/" ${LOG_FILTER_ARGS:+"${LOG_FILTER_ARGS}"} volumereplication 2>&1; } | dbglog
-
-# For VolumeReplicationGroups of all namespaces
-dbglog "collecting dump of oc get volumereplicationgroups all namespaces"
-{ oc get volumereplicationgroups --all-namespaces; } >>"${BASE_COLLECTION_PATH}/namespaces/all/vrg_all_namespaces"
-{ oc adm inspect --all-namespaces --dest-dir="${BASE_COLLECTION_PATH}/namespaces/all/" ${LOG_FILTER_ARGS:+"${LOG_FILTER_ARGS}"} vrg 2>&1; } | dbglog
-
-# Collect details of storageclaim of all namespaces for managed services
-dbglog "collecting dump of oc get storageclaim all namespaces"
-if [ -n "$(oc get storageclaim --no-headers -A | awk '{print $2}')" ]; then
-     { oc get storageclaim --all-namespaces; } >>"${BASE_COLLECTION_PATH}/namespaces/all/get_storageclaim_all_ns"
-     { oc describe storageclaim --all-namespaces; } >>"${BASE_COLLECTION_PATH}/namespaces/all/desc_storageclaim_all_ns"
-     { oc get storageclaim -oyaml --all-namespaces; } >>"${BASE_COLLECTION_PATH}/namespaces/all/get_yaml_storageclaim_all_ns"
-fi
-
-# Collect details of managedfusionoffering of all namespaces for managed services
-dbglog "collecting dump of oc get managedfusionoffering all namespaces"
-if [ -n "$(oc get managedfusionoffering --no-headers -A | awk '{print $1}')" ]; then
-     { oc get managedfusionoffering --all-namespaces; } >>"${BASE_COLLECTION_PATH}/namespaces/all/get_managedfusionoffering_all_ns"
-     { oc describe managedfusionoffering --all-namespaces; } >>"${BASE_COLLECTION_PATH}/namespaces/all/desc_managedfusionoffering_all_ns"
-     { oc get managedfusionoffering -oyaml --all-namespaces; } >>"${BASE_COLLECTION_PATH}/namespaces/all/get_yaml_managedfusionoffering_all_ns"
-fi
-
-# Collect csi-addons object details of all namespaces
-dbglog "collecting dump of oc get csiaddonsnode all namespaces"
-if [ -n "$(oc get csiaddonsnode --no-headers -A | awk '{print $2}')" ]; then
-     { oc get csiaddonsnode --all-namespaces; } >>"${BASE_COLLECTION_PATH}/namespaces/all/get_csiaddonsnode_all_ns"
-     { oc describe csiaddonsnode --all-namespaces; } >>"${BASE_COLLECTION_PATH}/namespaces/all/desc_csiaddonsnode_all_ns"
-     { oc get csiaddonsnode -oyaml --all-namespaces; } >>"${BASE_COLLECTION_PATH}/namespaces/all/get_yaml_csiaddonsnode_all_ns"
-fi
-
-dbglog "collecting dump of oc get reclaimspacejob all namespaces"
-if [ -n "$(oc get reclaimspacejob --no-headers -A | awk '{print $1}')" ]; then
-     { oc get reclaimspacejob --all-namespaces; } >>"${BASE_COLLECTION_PATH}/namespaces/all/get_reclaimspacejob_all_ns"
-     { oc describe reclaimspacejob --all-namespaces; } >>"${BASE_COLLECTION_PATH}/namespaces/all/desc_reclaimspacejob_all_ns"
-     { oc get reclaimspacejob -oyaml --all-namespaces; } >>"${BASE_COLLECTION_PATH}/namespaces/all/get_yaml_reclaimspacejob_all_ns"
-fi
-
-dbglog "collecting dump of oc get reclaimspacecronjobs all namespaces"
-if [ -n "$(oc get reclaimspacecronjobs --no-headers -A | awk '{print $1}')" ]; then
-     { oc get reclaimspacecronjobs --all-namespaces; } >>"${BASE_COLLECTION_PATH}/namespaces/all/get_reclaimspacecronjobs_all_ns"
-     { oc describe reclaimspacecronjobs --all-namespaces; } >>"${BASE_COLLECTION_PATH}/namespaces/all/desc_reclaimspacecronjobs_all_ns"
-     { oc get reclaimspacecronjobs -oyaml --all-namespaces; } >>"${BASE_COLLECTION_PATH}/namespaces/all/get_yaml_reclaimspacecronjobs_all_ns"
-fi
-
-dbglog "collecting dump of oc get networkfence all namespaces"
-if [ -n "$(oc get networkfence --no-headers -A | awk '{print $1}')" ]; then
-     { oc get networkfence --all-namespaces; } >>"${BASE_COLLECTION_PATH}/namespaces/all/get_networkfence_all_ns"
-     { oc describe networkfence --all-namespaces; } >>"${BASE_COLLECTION_PATH}/namespaces/all/desc_networkfence_all_ns"
-     { oc get networkfence -oyaml --all-namespaces; } >>"${BASE_COLLECTION_PATH}/namespaces/all/get_yaml_networkfence_all_ns"
-fi
-
-dbglog "collecting network-attachment-definitions of oc get network-attachment-definitions all namespaces"
-if [ -n "$(oc get network-attachment-definitions --no-headers -A | awk '{print $1}')" ]; then
-     { oc get network-attachment-definitions -oyaml --all-namespaces; } >>"${BASE_COLLECTION_PATH}/namespaces/all/get_yaml_net_attach_def_all_ns"
-     { oc describe network-attachment-definitions --all-namespaces; } >>"${BASE_COLLECTION_PATH}/namespaces/all/desc_net_attach_def_all_ns"
-fi
-
-dbglog "collecting dump of oc get encryptionkeyrotationjob all namespaces"
-if [ -n "$(oc get encryptionkeyrotationjob --no-headers -A | awk '{print $1}')" ]; then
-     { oc get encryptionkeyrotationjob --all-namespaces; } >>"${BASE_COLLECTION_PATH}/namespaces/all/get_encryptionkeyrotationjob_all_ns"
-     { oc describe encryptionkeyrotationjob --all-namespaces; } >>"${BASE_COLLECTION_PATH}/namespaces/all/desc_encryptionkeyrotationjob_all_ns"
-     { oc get encryptionkeyrotationjob -oyaml --all-namespaces; } >>"${BASE_COLLECTION_PATH}/namespaces/all/get_yaml_encryptionkeyrotationjob_all_ns"
-fi
-
-dbglog "collecting dump of oc get encryptionkeyrotationcronjob all namespaces"
-if [ -n "$(oc get encryptionkeyrotationcronjob --no-headers -A | awk '{print $1}')" ]; then
-     { oc get encryptionkeyrotationcronjob --all-namespaces; } >>"${BASE_COLLECTION_PATH}/namespaces/all/get_encryptionkeyrotationcronjob_all_ns"
-     { oc describe encryptionkeyrotationcronjob --all-namespaces; } >>"${BASE_COLLECTION_PATH}/namespaces/all/desc_encryptionkeyrotationcronjob_all_ns"
-     { oc get encryptionkeyrotationcronjob -oyaml --all-namespaces; } >>"${BASE_COLLECTION_PATH}/namespaces/all/get_yaml_encryptionkeyrotationcronjob_all_ns"
-fi
+# Run the Collection of oc_get_all
+for oc_get in "${oc_get_all[@]}"; do
+     dbglog "collecting oc get command ${oc_get}"
+     COMMAND_OUTPUT_FILE=${BASE_COLLECTION_PATH}/namespaces/all/${oc_get// /_}
+     # shellcheck disable=SC2086
+     { oc get "${oc_get}" --all-namespaces; } >>"${COMMAND_OUTPUT_FILE}"
+     dbglog "collecting oc describe command ${oc_get}"
+     COMMAND_OUTPUT_FILE=${BASE_COLLECTION_PATH}/namespaces/all/${oc_get// /_}
+     # shellcheck disable=SC2086
+     { oc describe "${oc_get}" --all-namespaces; } >>"${COMMAND_OUTPUT_FILE}"
+     { oc adm inspect --all-namespaces --dest-dir="${BASE_COLLECTION_PATH}/namespaces/all/" ${LOG_FILTER_ARGS:+"${LOG_FILTER_ARGS}"} "${oc_get}" 2>&1; } | dbglog
+     { oc get "${oc_get}" -oyaml --all-namespaces; } >>"${BASE_COLLECTION_PATH}/namespaces/all/${oc_get// /_}"
+done
