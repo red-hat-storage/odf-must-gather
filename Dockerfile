@@ -1,4 +1,4 @@
-FROM registry.ci.openshift.org/ocp/4.16:cli
+FROM registry.ci.openshift.org/ocp/4.17:cli
 
 WORKDIR /tmp
 
