@@ -73,6 +73,7 @@ oc_yamls+=("storagerequest")
 oc_yamls+=("alertmanager")
 oc_yamls+=("prometheus")
 oc_yamls+=("alertmanagerconfig")
+oc_yamls+=("recipe")
 
 # collect get output of OC commands for all namespaces
 oc_get_all=()
@@ -96,6 +97,7 @@ oc_get_all+=("drivers.csi.ceph.io")
 oc_get_all+=("cephconnections.csi.ceph.io")
 oc_get_all+=("clientprofiles.csi.ceph.io")
 oc_get_all+=("clientprofilemappings.csi.ceph.io")
+oc_get_all+=("recipe.ramendr.openshift.io")
 
 for INSTALL_NAMESPACE in $PRODUCT_NAMESPACE $INSTALL_NAMESPACES $MANAGED_FUSION_NAMESPACE $OPERATOR_NAMESPACE; do
      dbglog "collecting dump of namespace ${INSTALL_NAMESPACE}"

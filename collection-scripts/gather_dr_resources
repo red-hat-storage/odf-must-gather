@@ -5,19 +5,23 @@
 BASE_COLLECTION_PATH=${BASE_COLLECTION_PATH:-"$(pwd)"}
 
 # Get all namespaces
-NAMESPACES=$(oc get namespace | awk '{print $1}')
+ALL_NAMESPACES=$(oc get namespace -o jsonpath='{.items[*].metadata.name}')
 
-# Items to check for
-NAMESPACE_DR_SYSTEM="openshift-dr-system"
-NAMESPACE_OPERATORS="openshift-operators"
+# DR namespaces
+DR_NAMESPACES=("openshift-dr-system" "openshift-operators" "openshift-dr-ops") 
 
-# Check if item1 exists in the output
-if [[ $NAMESPACES =~ $NAMESPACE_DR_SYSTEM ]]; then
-    NAMESPACE=$NAMESPACE_DR_SYSTEM
-elif [[ $NAMESPACES =~ $NAMESPACE_OPERATORS ]]; then
-    NAMESPACE=$NAMESPACE_OPERATORS
-else
-    echo "Neither $NAMESPACE_DR_SYSTEM nor $NAMESPACE_OPERATORS exists in the namespaces"
+NAMESPACES=()
+
+# Iterate through DR namespaces
+for DR_NAMESPACE in "${DR_NAMESPACES[@]}"; do
+    if echo "${ALL_NAMESPACES[@]}" | grep -q "$DR_NAMESPACE"; then
+        NAMESPACES+=("$DR_NAMESPACE")
+    fi
+done
+
+# Check if NAMESPACES is empty
+if [[ ${#NAMESPACES[@]} -eq 0 ]]; then
+    dbglog "NAMESPACES is empty. Exiting with status 0."
     exit 0
 fi
 
@@ -27,21 +31,25 @@ dr_resources+=(secrets)
 dr_resources+=(configmap)
 dr_resources+=(pods -owide)
 
-dbglog "collecting dump of openshift-dr-system namespace"
-{ oc adm inspect --dest-dir="${BASE_COLLECTION_PATH}" ${LOG_FILTER_ARGS:+"${LOG_FILTER_ARGS}"} ns/"${NAMESPACE}" 2>&1; } | dbglog
 
-# Create the dir for oc_output for openshift-dr-system namespace
-mkdir -p "${BASE_COLLECTION_PATH}/namespaces/${NAMESPACE}/oc_output/"
+# Iterate through dr namespaces
+for NAMESPACE in "${NAMESPACES[@]}"; do
+    dbglog "collecting dump of ${NAMESPACE} namespace"
+    { oc adm inspect --dest-dir="${BASE_COLLECTION_PATH}" ${LOG_FILTER_ARGS:+"${LOG_FILTER_ARGS}"} ns/"${NAMESPACE}" 2>&1; } | dbglog
 
-# Run the Collection of Resources to list
-for dr_resource in "${dr_resources[@]}"; do
-    dbglog "collecting oc command ${dr-resource}"
-    COMMAND_OUTPUT_FILE=${BASE_COLLECTION_PATH}/namespaces/${NAMESPACE}/oc_output/${dr_resource// /_}
+    # Create the dir for oc_output for dr namespace
+    mkdir -p "${BASE_COLLECTION_PATH}/namespaces/${NAMESPACE}/oc_output/"
+
+    # Run the Collection of Resources to list
+    for dr_resource in "${dr_resources[@]}"; do
+        dbglog "collecting oc command ${dr_resource}"
+        COMMAND_OUTPUT_FILE=${BASE_COLLECTION_PATH}/namespaces/${NAMESPACE}/oc_output/${dr_resource// /_}
+        # shellcheck disable=SC2086
+        { oc get ${dr_resource} -n ${NAMESPACE}; } >>"${COMMAND_OUTPUT_FILE}"
+    done
+    # Run collection of oc describe command for config map
+    dbglog "collecting oc describe configmap -n ${NAMESPACE}"
+    COMMAND_OUTPUT_FILE=${BASE_COLLECTION_PATH}/namespaces/${NAMESPACE}/oc_output/desc_configmap
     # shellcheck disable=SC2086
-    { oc get ${dr_resource} -n ${NAMESPACE}; } >>"${COMMAND_OUTPUT_FILE}"
+    { oc describe configmap -n ${NAMESPACE}; } >>"${COMMAND_OUTPUT_FILE}"
 done
-# Run collection of oc describe command for config map
-dbglog "collecting oc describe configmap -n ${NAMESPACE}"
-COMMAND_OUTPUT_FILE=${BASE_COLLECTION_PATH}/namespaces/${NAMESPACE}/oc_output/desc_configmap
-# shellcheck disable=SC2086
-{ oc describe configmap -n ${NAMESPACE}; } >>"${COMMAND_OUTPUT_FILE}"
