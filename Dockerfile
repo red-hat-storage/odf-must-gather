@@ -1,13 +1,10 @@
 FROM registry.ci.openshift.org/ocp/4.17:cli
 
-WORKDIR /tmp
+WORKDIR /usr/bin
+COPY collection-scripts .
 
-COPY . .
-
-RUN mkdir -p /templates
-
-COPY collection-scripts/* /usr/bin/
-COPY templates/* /templates/
+WORKDIR /
+COPY templates ./templates
 
 # We do not need it as of now
 # jq is not preinstalled on openshift/origin-cli either
