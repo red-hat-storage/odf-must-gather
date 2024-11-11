@@ -1,0 +1,32 @@
+#!/usr/bin/env bash
+
+# Expect base collection path as an exported variable
+# If it is not defined, use PWD instead
+BASE_COLLECTION_PATH=${BASE_COLLECTION_PATH:-"$(pwd)"}
+
+MINIMAL_COLLECTION_PATH="${BASE_COLLECTION_PATH}/minimal_resources"
+
+# Create directories for minimal resources collection
+mkdir -p "${MINIMAL_COLLECTION_PATH}/oc_output"
+
+# Define minimal resources
+minimal_resources=()
+minimal_resources+=(cephclusters)
+minimal_resources+=(cephblockpools)
+minimal_resources+=(cephfilesystems)
+minimal_resources+=(csv)
+minimal_resources+=(sc)
+minimal_resources+=(configmaps)
+
+# Collect resources except for storageclusters
+for resource in "${minimal_resources[@]}"; do
+    dbglog "collecting dump ${resource}"
+    { oc adm inspect --dest-dir="${MINIMAL_COLLECTION_PATH}" --all-namespaces ${LOG_FILTER_ARGS:+"${LOG_FILTER_ARGS}"} "${resource}" 2>&1; } | dbglog
+done
+
+# Special handling for storageclusters
+dbglog "Collecting storageclusters"
+{ oc get storageclusters --all-namespaces -o yaml; } > "${MINIMAL_COLLECTION_PATH}/oc_output/storageclusters.yaml" 2>&1
+
+# Final message indicating completion
+dbglog "Minimal resources collection completed."
