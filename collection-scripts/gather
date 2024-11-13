@@ -11,6 +11,7 @@ namespaced=false
 clusterscoped=false
 help=false
 default=true
+minimal=false
 
 # Store PIDs of all the subprocesses
 pids=()
@@ -57,6 +58,11 @@ while [[ $# -gt 0 ]]; do
         default=false
         shift
         ;;
+    -m | --minimal)
+        minimal=true
+        default=false
+        shift
+        ;;
     -h | --help)
         help=true
         default=false
@@ -93,6 +99,7 @@ Options:
   -cl, --ceph-logs          Collect ceph daemon, kernel, journal logs and crash reports
   -ns, --namespaced         Collect namespaced resources
   -cs, --clusterscoped      Collect clusterscoped resources
+  -m,  --minimal            Collect storagecluster, cephcluster CRDs and operator CSVs
   -h,  --help               Print this help message
 
 Description:
@@ -194,6 +201,12 @@ fi
 if [ "$clusterscoped" == true ] && [ "$odf" == false ]; then
     echo "Collect clusterscoped logs..."
     gather_clusterscoped_resources ${BASE_COLLECTION_PATH} &
+    pids+=($!)
+fi
+
+if [ "$minimal" == true ]; then
+    echo "Collect minimal resource files..."
+    gather_minimal_resources ${BASE_COLLECTION_PATH} &
     pids+=($!)
 fi
 
