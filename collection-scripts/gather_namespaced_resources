@@ -130,6 +130,7 @@ for INSTALL_NAMESPACE in $PRODUCT_NAMESPACE $INSTALL_NAMESPACES $MANAGED_FUSION_
      { oc get storageclusters -n "${INSTALL_NAMESPACE}" -o yaml; } >"${BASE_COLLECTION_PATH}/namespaces/${INSTALL_NAMESPACE}/oc_output/storagecluster.yaml" 2>&1
      { oc get storagesystem -n "${INSTALL_NAMESPACE}" -o yaml; } >"${BASE_COLLECTION_PATH}/namespaces/${INSTALL_NAMESPACE}/oc_output/storagesystem.yaml" 2>&1
      { oc get storageconsumer -n "${INSTALL_NAMESPACE}" -o yaml; } >"${BASE_COLLECTION_PATH}/namespaces/${INSTALL_NAMESPACE}/oc_output/storageconsumer.yaml" 2>&1
+     { oc get secret rook-ceph-external-cluster-details -n "${INSTALL_NAMESPACE}" -o jsonpath='{.data.external_cluster_details}' | base64 --decode | sed -E 's/("\w+Key":\s*)"[A-Za-z0-9+/=]+"/\1"REDACTED"/g'; } >"${BASE_COLLECTION_PATH}/namespaces/${INSTALL_NAMESPACE}/oc_output/external_cluster_details.json" 2>&1
 done
 
 # Collect oc get events with sorted timestamp
