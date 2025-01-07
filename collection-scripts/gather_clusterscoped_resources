@@ -24,6 +24,8 @@ commands_get+=("volumesnapshotcontent")
 commands_get+=("volumegroupsnapshotclass")
 commands_get+=("volumegroupsnapshotcontent")
 commands_get+=("storageclusterpeers")
+commands_get+=("networkfences")
+commands_get+=("networkfenceclasses")
 
 # collect yaml output of OC commands
 oc_yamls=()
@@ -43,6 +45,8 @@ oc_yamls+=("volumesnapshotcontent")
 oc_yamls+=("volumegroupsnapshotclass")
 oc_yamls+=("volumegroupsnapshotcontent")
 oc_yamls+=("storageclusterpeers")
+oc_yamls+=("networkfences")
+oc_yamls+=("networkfenceclasses")
 
 # collect describe output of OC commands
 commands_desc=()
@@ -62,6 +66,8 @@ commands_desc+=("volumesnapshotcontent")
 commands_desc+=("volumegroupsnapshotclass")
 commands_desc+=("volumegroupsnapshotcontent")
 commands_desc+=("storageclusterpeers")
+commands_desc+=("networkfences")
+commands_desc+=("networkfenceclasses")
 
 # collection path for OC commands
 mkdir -p "${BASE_COLLECTION_PATH}/cluster-scoped-resources/oc_output/"
