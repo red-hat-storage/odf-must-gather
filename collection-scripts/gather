@@ -58,7 +58,7 @@ while [[ $# -gt 0 ]]; do
         default=false
         shift
         ;;
-    -m | --minimal)
+    -m | --minimal-crds)
         minimal=true
         default=false
         shift
@@ -99,7 +99,7 @@ Options:
   -cl, --ceph-logs          Collect ceph daemon, kernel, journal logs and crash reports
   -ns, --namespaced         Collect namespaced resources
   -cs, --clusterscoped      Collect clusterscoped resources
-  -m,  --minimal            Collect storagecluster, cephcluster CRDs and operator CSVs
+  -m,  --minimal-crds       Collect storagecluster, cephcluster CRDs and operator CSVs
   -h,  --help               Print this help message
 
 Description:
