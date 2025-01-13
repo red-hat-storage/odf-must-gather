@@ -5,7 +5,7 @@
 BASE_COLLECTION_PATH=${BASE_COLLECTION_PATH:-"$(pwd)"}
 
 # Make a global variable for namespace
-INSTALL_NAMESPACE=openshift-storage
+INSTALL_NAMESPACE=$(oc get csv -A | grep odf-operator | awk '{print $1}')
 
 NOOBAA_COLLLECTION_PATH="${BASE_COLLECTION_PATH}/noobaa"
 mkdir -p "${NOOBAA_COLLLECTION_PATH}"
@@ -33,16 +33,16 @@ mkdir -p "${NOOBAA_COLLLECTION_PATH}/raw_output/}"
 
 # Save the information of all Postgres DBs in the NooBaa DB pod
 dbglog "Collecting MCG database information..."
-oc rsh --namespace openshift-storage noobaa-db-pg-0 psql -d nbcore -c '\pset pager off' -c '\list+' -c '\dt+' &>"${NOOBAA_COLLLECTION_PATH}"/raw_output/db_list.txt 2>&1
+oc rsh --namespace "${INSTALL_NAMESPACE}" noobaa-db-pg-0 psql -d nbcore -c '\pset pager off' -c '\list+' -c '\dt+' &>"${NOOBAA_COLLLECTION_PATH}"/raw_output/db_list.txt 2>&1
 
 # Run the Collection of Noobaa cli using must-gather
 # shellcheck disable=SC2086
 for cli in "${noobaa_cli[@]}"; do
     dbglog "collecting dump of ${cli}"
     COMMAND_OUTPUT_FILE="${NOOBAA_COLLLECTION_PATH}"/raw_output/${cli// /_}
-    { timeout 180 noobaa ${cli} --namespace openshift-storage >>"${COMMAND_OUTPUT_FILE}"; } >>"${BASE_COLLECTION_PATH}"/gather-debug.log 2>&1
+    { timeout 180 noobaa ${cli} --namespace "${INSTALL_NAMESPACE}" >>"${COMMAND_OUTPUT_FILE}"; } >>"${BASE_COLLECTION_PATH}"/gather-debug.log 2>&1
 done
-noobaa diagnose --dir "${NOOBAA_COLLLECTION_PATH}"/raw_output/ --namespace openshift-storage >>"${BASE_COLLECTION_PATH}"/gather-debug.log 2>&1
+noobaa diagnose --dir "${NOOBAA_COLLLECTION_PATH}"/raw_output/ --namespace "${INSTALL_NAMESPACE}" >>"${BASE_COLLECTION_PATH}"/gather-debug.log 2>&1
 
 # Run the Collection of NooBaa Resources using must-gather
 for resource in "${noobaa_resources[@]}"; do
