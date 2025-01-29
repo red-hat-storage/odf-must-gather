@@ -243,8 +243,8 @@ totalTime=$((end - start))
 {
     printf "total time taken by collection was %s seconds \n" ${totalTime}
     printf "collection ended at: %s \n" "${END_TIME}"
-    echo "deleting empty files"
+    echo "deleting empty files..."
 
 } >>${BASE_COLLECTION_PATH}/gather-debug.log 2>&1
-find "${BASE_COLLECTION_PATH}" -empty -delete >>${BASE_COLLECTION_PATH}/gather-debug.log 2>&1
+find "${BASE_COLLECTION_PATH}" -type f \( -empty -o -size 1c \) -print -delete >>${BASE_COLLECTION_PATH}/gather-debug.log 2>&1
 exit 0
