@@ -11,6 +11,7 @@ common_ceph_resources=()
 common_ceph_resources+=(cephobjectstores)
 common_ceph_resources+=(cephobjectstoreusers)
 common_ceph_resources+=(cephclusters)
+common_ceph_resources+=(cephblockpoolradosnamespaces.ceph.rook.io)
 
 for resource in "${common_ceph_resources[@]}"; do
     dbglog "collecting dump ${resource}"
