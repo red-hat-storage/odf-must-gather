@@ -27,7 +27,14 @@ noobaa_desc=()
 noobaa_desc+=("pod noobaa-db-pg-0")
 noobaa_desc+=("statefulset.apps noobaa-db-pg")
 
-/templates/noobaa.template
+cp_noobaa_cli "$INSTALL_NAMESPACE"
+
+# Bail out early if noobaa CLI is not present
+if [ ! -f /usr/bin/noobaa ]; then
+  echo "FATAL: failed to locate noobaa CLI"
+
+  exit 1
+fi
 
 mkdir -p "${NOOBAA_COLLLECTION_PATH}/raw_output/}"
 
