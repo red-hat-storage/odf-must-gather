@@ -367,14 +367,13 @@ for ns in $namespaces; do
                 {
                     printf "Collecting mirror pool status for: %s\n" "${bp}"
                     timeout 120 oc -n "${ns}" exec "${HOSTNAME}"-helper -- bash -c "rbd mirror pool status --verbose $bp --format=json --pretty-format" 2>>"${COMMAND_ERR_OUTPUT_DIR}"/gather-rbd-mirror-pool-status-"${bp}"-debug.log
-                } >>"${COMMAND_OUTPUT_DIR}"/rbd_mirror_pool_status &
+                } >>"${COMMAND_OUTPUT_DIR}"/rbd_mirror_pool_status_"${bp}" &
                 pids_rbd+=($!)
                 {
                     printf "Collecting mirror pool info for: %s\n" "${bp}"
                     timeout 120 oc -n "${ns}" exec "${HOSTNAME}"-helper -- bash -c "rbd mirror pool info $bp --format=json --pretty-format" 2>>"${COMMAND_ERR_OUTPUT_DIR}"/gather-rbd-mirror-pool-info-"${bp}"-debug.log
-                } >>"${COMMAND_OUTPUT_DIR}"/rbd_mirror_pool_info &
+                } >>"${COMMAND_OUTPUT_DIR}"/rbd_mirror_pool_info_"${bp}" &
                 pids_rbd+=($!)
-                printf "Collecting mirror image status for images in: %s\n" "${bp}" >>"${COMMAND_OUTPUT_DIR}"/rbd_mirror_image_status
                 images=$(timeout 60 oc -n "${ns}" exec "${HOSTNAME}"-helper -- bash -c "rbd ls -p $bp")
                 for image in $images; do
                     dbglogf "${CEPH_GATHER_DBGLOG}" "Printing information for image: ${image}"
@@ -389,12 +388,51 @@ for ns in $namespaces; do
                     dbglog "waiting for ${pids_rbd[*]} to terminate"
                     wait "${pids_rbd[@]}"
                 fi
-                find "${COMMAND_OUTPUT_DIR}" -name "rbd_mirror_image_status_*.part" -print0 | xargs -0 cat >>"${COMMAND_OUTPUT_DIR}"/rbd_mirror_image_status
+                find "${COMMAND_OUTPUT_DIR}" -name "rbd_mirror_image_status_*.part" -print0 | xargs -0 cat >>"${COMMAND_OUTPUT_DIR}"/rbd_mirror_image_status_"${bp}"
                 find "${COMMAND_OUTPUT_DIR}" -name "rbd_mirror_image_status_*.part" -print0 | xargs -0 rm -f
+                # Collecting mirror image status for provider mode with rados namespace
+                rados_namespaces=$(timeout 60 oc -n "${ns}" exec "${HOSTNAME}"-helper -- bash -c "rbd -p $bp namespace ls" | sed 1d)
+                for rns in $rados_namespaces; do
+                    isEnabled=$(timeout 60 oc -n "${ns}" exec "${HOSTNAME}"-helper -- bash -c "rbd mirror pool info $bp --namespace ${rns} --format=json | jq --raw-output '.mode'")
+                    if [ "${isEnabled}" != "disabled" ]; then
+                        pids_rbd=()
+                        dbglogf "${CEPH_GATHER_DBGLOG}" "Mirroring is enabled on: ${bp} ${rns}"
+                        {
+                            printf "Collecting mirror pool status for: %s/%s\n" "${bp}" "${rns}"
+                            timeout 120 oc -n "${ns}" exec "${HOSTNAME}"-helper -- bash -c "rbd mirror pool status --verbose $bp --namespace ${rns} --format=json --pretty-format" 2>>"${COMMAND_ERR_OUTPUT_DIR}"/gather-rbd-mirror-pool-status-"${bp}"-"${rns}"-debug.log
+                        } >>"${COMMAND_OUTPUT_DIR}"/rbd_mirror_pool_status_"${bp}"_"${rns}" &
+                        pids_rbd+=($!)
+                        {
+                            printf "Collecting mirror pool info for: %s/%s\n" "${bp}" "${rns}"
+                            timeout 120 oc -n "${ns}" exec "${HOSTNAME}"-helper -- bash -c "rbd mirror pool info $bp --namespace ${rns} --format=json --pretty-format" 2>>"${COMMAND_ERR_OUTPUT_DIR}"/gather-rbd-mirror-pool-info-"${bp}"-"${rns}"-debug.log
+                        } >>"${COMMAND_OUTPUT_DIR}"/rbd_mirror_pool_info_"${bp}"_"${rns}" &
+                        pids_rbd+=($!)
+                        images=$(timeout 60 oc -n "${ns}" exec "${HOSTNAME}"-helper -- bash -c "rbd ls -p $bp --namespace ${rns}")
+                        for image in $images; do
+                            dbglogf "${CEPH_GATHER_DBGLOG}" "Printing information for image: ${image}"
+                            {
+                                printf "Collecting mirror image status for: %s/%s/%s\n" "${bp}" "${rns}" "${image}"
+                                timeout 120 oc -n "${ns}" exec "${HOSTNAME}"-helper -- bash -c "rbd mirror image status $bp/$image --namespace ${rns} --format=json --pretty-format" 2>>"${COMMAND_ERR_OUTPUT_DIR}"/gather-rbd-mirror-image-status-"${bp}"-"${rns}"-"${image}"-debug.log
+                            } >>"${COMMAND_OUTPUT_DIR}"/rbd_mirror_image_status_"${image}"_"${rns}".part &
+                            pids_rbd+=($!)
+                        done
+                        if [ -n "${pids_rbd[*]}" ]; then
+                            # wait for all pids
+                            dbglog "waiting for ${pids_rbd[*]} to terminate"
+                            wait "${pids_rbd[@]}"
+                        fi
+                        find "${COMMAND_OUTPUT_DIR}" -name "rbd_mirror_image_status_*.part" -print0 | xargs -0 cat >>"${COMMAND_OUTPUT_DIR}"/rbd_mirror_image_status_"${bp}"_"${rns}"
+                        find "${COMMAND_OUTPUT_DIR}" -name "rbd_mirror_image_status_*.part" -print0 | xargs -0 rm -f
+                    else
+                        printf "Mirroring is disabled on: %s/%s\n" "${bp}" "${rns}" >>"${COMMAND_OUTPUT_DIR}"/rbd_mirror_pool_status_"${bp}"_"${rns}"
+                        printf "Mirroring is disabled on: %s/%s\n" "${bp}" "${rns}" >>"${COMMAND_OUTPUT_DIR}"/rbd_mirror_pool_info_"${bp}"_"${rns}"
+                        printf "Mirroring is disabled on: %s/%s\n" "${bp}" "${rns}" >>"${COMMAND_OUTPUT_DIR}"/rbd_mirror_image_status_"${bp}"_"${rns}"
+                    fi
+                done
             else
-                printf "Mirroring is disabled on: %s\n" "${bp}" >>"${COMMAND_OUTPUT_DIR}"/rbd_mirror_pool_status
-                printf "Mirroring is disabled on: %s\n" "${bp}" >>"${COMMAND_OUTPUT_DIR}"/rbd_mirror_pool_info
-                printf "Mirroring is disabled on: %s\n" "${bp}" >>"${COMMAND_OUTPUT_DIR}"/rbd_mirror_image_status
+                printf "Mirroring is disabled on: %s\n" "${bp}" >>"${COMMAND_OUTPUT_DIR}"/rbd_mirror_pool_status_"${bp}"
+                printf "Mirroring is disabled on: %s\n" "${bp}" >>"${COMMAND_OUTPUT_DIR}"/rbd_mirror_pool_info_"${bp}"
+                printf "Mirroring is disabled on: %s\n" "${bp}" >>"${COMMAND_OUTPUT_DIR}"/rbd_mirror_image_status_"${bp}"
             fi
         done
 
