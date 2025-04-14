@@ -37,6 +37,8 @@ spec:
       runAsUser: 2016
       runAsGroup: 2016
     volumeMounts:
+      - mountPath: /etc/ceph
+        name: ceph-config
       - mountPath: /dev
         name: dev
       - mountPath: /sys/bus
@@ -61,3 +63,5 @@ spec:
         items:
         - key: data
           path: mon-endpoints
+    - name: ceph-config
+      emptyDir: {}
