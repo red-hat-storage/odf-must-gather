@@ -17,10 +17,9 @@ for ns in $namespaces; do
         oc rsync -n "${ns}" "$(oc get pods -n "${ns}" --no-headers | grep "${node//./}-debug" | awk '{print $1}')":/host/var/lib/rook/"${ns}"/log "${CEPH_DAEMON_LOG_OUTPUT_DIR}"
     }
 
-    crash_core_collection() {
-        dbglog "collecting crash core dump from node ${node}"
+    crash_collection() {
+        dbglog "collecting crash logs from node ${node}"
         oc rsync -n "${ns}" "$(oc get pods -n "${ns}" --no-headers | grep "${node//./}"-debug | awk '{print $1}')":/host/var/lib/rook/"${ns}"/crash/ "${CRASH_OUTPUT_DIR}"
-        oc rsync -n "${ns}" "$(oc get pods -n "${ns}" --no-headers | grep "${node//./}"-debug | awk '{print $1}')":/host/var/lib/systemd/coredump/ "${COREDUMP_OUTPUT_DIR}"
     }
 
     journal_collection() {
@@ -47,17 +46,15 @@ CMDS
         CEPH_DAEMON_LOG_OUTPUT_DIR=${CEPH_COLLECTION_PATH}/ceph_daemon_log_${node}
         JOURNAL_OUTPUT_DIR=${CEPH_COLLECTION_PATH}/journal_${node}
         KERNEL_OUTPUT_DIR=${CEPH_COLLECTION_PATH}/kernel_${node}
-        COREDUMP_OUTPUT_DIR=${CEPH_COLLECTION_PATH}/coredump_${node}
-        mkdir -p "${CRASH_OUTPUT_DIR}"
         mkdir -p "${CEPH_DAEMON_LOG_OUTPUT_DIR}"
         mkdir -p "${JOURNAL_OUTPUT_DIR}"
         mkdir -p "${KERNEL_OUTPUT_DIR}"
-        mkdir -p "${COREDUMP_OUTPUT_DIR}"
+        mkdir -p "${CRASH_OUTPUT_DIR}"
         ceph_daemon_log_collection &
         pids_log+=($!)
-        crash_core_collection &
-        pids_log+=($!)
         journal_collection &
+        pids_log+=($!)
+        crash_collection &
         pids_log+=($!)
         if [ -n "${pids_log[*]}" ]; then
             # wait for all pids
@@ -74,5 +71,5 @@ CMDS
 CMDS
     done
 
-    dbglog "ceph core dump collection completed"
+    dbglog "ceph logs collection completed"
 done
