@@ -29,7 +29,7 @@ fi
 dr_resources=()
 dr_resources+=(secrets)
 dr_resources+=(configmap)
-dr_resources+=(pods -owide)
+dr_resources+=("pods -o wide")
 
 
 # Iterate through dr namespaces
