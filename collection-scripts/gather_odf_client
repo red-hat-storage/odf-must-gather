@@ -6,8 +6,7 @@ BASE_COLLECTION_PATH=${BASE_COLLECTION_PATH:-"$(pwd)"}
 
 CLIENT_OPERATOR_NAMESPACE=$(oc get deploy -l app=ocs-client-operator -A --no-headers | awk '{print $1}')
 
-# collection path for OC commands
-mkdir -p "${BASE_COLLECTION_PATH}/odf-client/oc_output/"
+# collection path for csi driver
 mkdir -p "${BASE_COLLECTION_PATH}/csidriver"
 
 # Command List

@@ -5,7 +5,12 @@
 # shellcheck disable=SC2034
 BASE_COLLECTION_PATH=${BASE_COLLECTION_PATH:-"$(pwd)"}
 
-ns=$(oc get deploy --all-namespaces -o go-template --template='{{range .items}}{{if .metadata.labels}}{{printf "%s %v" .metadata.namespace (index .metadata.labels "olm.owner")}} {{printf "\n"}}{{end}}{{end}}' | grep ocs-operator | awk '{print $1}' | uniq)
+# It stores the namespace of the operator ( valid for both client and default operator)
+ns=$(oc get deploy --all-namespaces -o go-template --template='{{range .items}}{{if .metadata.labels}}{{printf "%s %v" .metadata.namespace (index .metadata.labels "olm.owner")}}{{"\n"}}{{end}}{{end}}' | grep -E 'ocs-operator|ocs-client-operator' | awk '{print $1}' | uniq)
+
+if [ -z "${ns}" ]; then
+    dbglog "Namespace not found. No OCS operator detected"
+fi
 
 POD_TEMPLATE="/templates/pod.template"
 
@@ -22,10 +27,22 @@ apply_helper_pod() {
 # Add Ready nodes to the list
 nodes=$(oc get nodes --no-headers | awk '/\yworker\y/{print $1}')
 
-# storing storagecluster name
-storageClusterPresent=$(oc get storagecluster -n "${ns}" -o go-template='{{range .items}}{{.metadata.name}}{{"\n"}}{{end}}')
-# checking for mcg standalone cluster
-reconcileStrategy=$(oc get storagecluster -n "${ns}" -o go-template='{{range .items}}{{.spec.multiCloudGateway.reconcileStrategy}}{{"\n"}}{{end}}')
+# Check if the storagecluster CRD exists
+# Running the `oc get storagecluster` command directly throws error:
+# `error: the server doesn't have a resource type "storagecluster"`
+CRD_EXISTS=$(oc get crd | grep -c "storageclusters.ocs.openshift.io")
+if [ "$CRD_EXISTS" -eq 0 ]; then
+    dbglog "storagecluster CRD not found. Skipping CRD-specific logic."
+    storageClusterPresent=""
+    reconcileStrategy=""
+else
+    # Only proceed if CRD is present
+    # storing storagecluster name
+    storageClusterPresent=$(oc get storagecluster -n "${ns}" -o go-template='{{range .items}}{{.metadata.name}}{{"\n"}}{{end}}' 2>/dev/null)
+    # checking for mcg standalone cluster
+    reconcileStrategy=$(oc get storagecluster -n "${ns}" -o go-template='{{range .items}}{{.spec.multiCloudGateway.reconcileStrategy}}{{"\n"}}{{end}}' 2>/dev/null)
+fi
+
 deploy() {
     operatorImage=$(oc get pods -l app=rook-ceph-operator -n "${ns}" -o jsonpath="{range .items[*]}{@.spec.containers[0].image}+{end}" | tr "+" "\n" | head -n1)
     if [ -z "${storageClusterPresent}" ]; then
