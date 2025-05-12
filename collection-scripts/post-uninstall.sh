@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 
 namespace=$(oc get deploy --all-namespaces -o go-template --template='{{range .items}}{{if .metadata.labels}}{{printf "%s %v" .metadata.namespace (index .metadata.labels "olm.owner")}} {{printf "\n"}}{{end}}{{end}}' | grep -E 'ocs-operator|ocs-client-operator' | awk '{print $1}' | uniq)
-reconcileStrategy=$(oc get storagecluster -n "${namespace}" -o go-template='{{range .items}}{{.spec.multiCloudGateway.reconcileStrategy}}{{"\n"}}{{end}}')
+reconcileStrategy=$(oc get storageclusters.ocs.openshift.io -n "${namespace}" -o go-template='{{range .items}}{{.spec.multiCloudGateway.reconcileStrategy}}{{"\n"}}{{end}}')
 
-if [ -n "$(oc get storagecluster -n "${namespace}" -o go-template='{{range .items}}{{.metadata.name}}{{"\n"}}{{end}}')" ] && [ "${reconcileStrategy}" != "standalone" ]; then
+if [ -n "$(oc get storageclusters.ocs.openshift.io -n "${namespace}" -o go-template='{{range .items}}{{.metadata.name}}{{"\n"}}{{end}}')" ] && [ "${reconcileStrategy}" != "standalone" ]; then
     oc delete -f pod_helper.yaml
 fi
 
