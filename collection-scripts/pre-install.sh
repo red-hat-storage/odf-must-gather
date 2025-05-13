@@ -38,9 +38,9 @@ if [ "$CRD_EXISTS" -eq 0 ]; then
 else
     # Only proceed if CRD is present
     # storing storagecluster name
-    storageClusterPresent=$(oc get storagecluster -n "${ns}" -o go-template='{{range .items}}{{.metadata.name}}{{"\n"}}{{end}}' 2>/dev/null)
+    storageClusterPresent=$(oc get storageclusters.ocs.openshift.io -n "${ns}" -o go-template='{{range .items}}{{.metadata.name}}{{"\n"}}{{end}}' 2>/dev/null)
     # checking for mcg standalone cluster
-    reconcileStrategy=$(oc get storagecluster -n "${ns}" -o go-template='{{range .items}}{{.spec.multiCloudGateway.reconcileStrategy}}{{"\n"}}{{end}}' 2>/dev/null)
+    reconcileStrategy=$(oc get storageclusters.ocs.openshift.io -n "${ns}" -o go-template='{{range .items}}{{.spec.multiCloudGateway.reconcileStrategy}}{{"\n"}}{{end}}' 2>/dev/null)
 fi
 
 deploy() {
