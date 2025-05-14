@@ -6,7 +6,7 @@ that expands its capabilities to gather Openshift Container Storage for informat
 
 ### Usage
 ```sh
-oc adm must-gather --image=registry.redhat.io/odf4/odf-must-gather-rhel9:v4.13 -- /usr/bin/gather -arg1 -arg2
+oc adm must-gather --image=registry.redhat.io/odf4/odf-must-gather-rhel9:v4.18 -- /usr/bin/gather -arg1 -arg2
 ```
 
 **Note**: For the time being the image in the above link is not from the latest upstream code and hence does not support args. This message will be updated along with the link when the image is up to date.
@@ -15,11 +15,13 @@ List of arguments that can be passed to the odf-must-gather are:
 ```
 -o,  --odf                Collect ODF logs (includes content from arguments -n, -c, -cl, -cs & -ns)
 -d,  --dr                 Collect DR logs
+-pc, --provider           Collect openshift-storage-client logs from a provider/consumer cluster
 -n,  --noobaa             Collect noobaa logs
 -c,  --ceph               Collect ceph commands and pod logs
 -cl, --ceph-logs          Collect ceph daemon, kernel, journal logs and crash reports
 -ns, --namespaced         Collect namespaced resources
 -cs, --clusterscoped      Collect clusterscoped resources
+-m,  --minimal            Collect storagecluster, cephcluster CRDs and operator CSVs
 -h,  --help               Print this help message
 ```
 
