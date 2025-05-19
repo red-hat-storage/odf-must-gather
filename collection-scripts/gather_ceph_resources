@@ -227,7 +227,54 @@ for ns in $namespaces; do
             collect_info "$1" "$2" "$3" >>"${COMMAND_OUTPUT_DIR}"/rbd_vol_and_snap_info_"$2".part &
             pids_rbd+=($!)
         }
-        
+
+        collect_rbd_group_info(){
+            dbglogf "${CEPH_GATHER_DBGLOG}" "collecting rbd group info"
+            collect_group_info(){
+                local pool=$1
+                local group=$2
+                local ns_f=$3
+
+                printf "Collecting rbd group info for: %s/%s\n" "$pool" "$group"
+                timeout 120 oc -n "${ns}" exec "${HOSTNAME}"-helper -- bash -c "${group_info} ${group} --pool ${pool} ${ns_f}"
+                images=$(timeout 120 oc -n "${ns}" exec "${HOSTNAME}"-helper -- bash -c "${group_image} ${group} --pool ${pool} ${ns_f}")
+                for image in $images; do
+                    printf "Collecting rbd image info for image: %s in group %s\n" "$image" "$group"
+                    timeout 120 oc -n "${ns}" exec "${HOSTNAME}"-helper -- bash -c "rbd info ${image} ${ns_f}"
+                done
+                printf "Collecting rbd mirror group status: %s\n" "$group"
+                timeout 120 oc -n "${ns}" exec "${HOSTNAME}"-helper -- bash -c "${group_mirror_status} ${group} --pool ${pool} ${ns_f}"
+                printf "Collecting rbd group snap ls: %s\n" "$group"
+                timeout 120 oc -n "${ns}" exec "${HOSTNAME}"-helper -- bash -c "${group_snap_ls} ${group} --pool ${pool} ${ns_f}"
+                snaps=$(timeout 120 oc -n "${ns}" exec "${HOSTNAME}"-helper -- bash -c "${group_snap_ls} ${group} --pool ${pool} ${ns_f} --format=json | jq -r '.[].snapshot'")
+                for snap in $snaps; do
+                    printf "Collecting snap info for snapshots in group %s@%s\n" "$group" "$snap"
+                    timeout 120 oc -n "${ns}" exec "${HOSTNAME}"-helper -- bash -c "${group_snap_info} ${group}@${snap} --pool ${pool} ${ns_f}"
+                done
+            }
+
+            local pool=$1
+            local namespace=$2
+            local ns_flag=""
+            if [ -n "${namespace}" ]; then
+                ns_flag="--namespace $namespace"
+            fi
+
+            local group_list_p="$list_group $pool $ns_flag"
+
+            COMMAND_OUTPUT_FILE=${COMMAND_OUTPUT_DIR}/rbd_group_ls_"${pool}"
+            { timeout 120 oc -n "${ns}" exec "${HOSTNAME}"-helper -- bash -c "${group_list_p}" >>"${COMMAND_OUTPUT_FILE}"; } >>"${COMMAND_ERR_OUTPUT_DIR}"/gather-rbd-group-ls-"${pool}"-debug.log 2>&1 &
+            groups=$(timeout 60 oc -n "${ns}" exec "${HOSTNAME}"-helper -- bash -c "${group_list_p}")
+            for group in $groups; do
+                collect_group_info "$pool" "$group" "$ns_flag">>"${COMMAND_OUTPUT_DIR}"/rbd_group_details_"$group" 2>>"${COMMAND_ERR_OUTPUT_DIR}"/gather-rbd-group-"${group}"-"${pool}"-debug.log
+            done
+            
+            dbglogf "${CEPH_GATHER_DBGLOG}" "collecting group snapshot schedule status and list"
+            { timeout 120 oc -n "${ns}" exec "${HOSTNAME}"-helper -- bash -c "rbd mirror group snapshot schedule status --format=json --pretty-format" >>"${COMMAND_OUTPUT_DIR}"/rbd_mirror_group_snapshot_schedule_status; } >>"${COMMAND_ERR_OUTPUT_DIR}"/gather-rbd-mirror-group-snap-schedule-status-debug.log 2>&1 &
+            { timeout 120 oc -n "${ns}" exec "${HOSTNAME}"-helper -- bash -c "rbd mirror group snapshot schedule ls --recursive --format=json --pretty-format" >>"${COMMAND_OUTPUT_DIR}"/rbd_mirror_group_snapshot_schedule_ls; } >>"${COMMAND_ERR_OUTPUT_DIR}"/gather-rbd-mirror-group-snap-schedule-list-debug.log 2>&1 &
+
+        }
+
         # Inspecting ceph block pools for ceph rbd
         blockpools=$(timeout 60 oc get cephblockpools.ceph.rook.io -n "${ns}" -o jsonpath="{range .items[*]}{@.metadata.name}{'\n'}{end}")
         for bp in $blockpools; do
@@ -242,6 +289,12 @@ for ns in $namespaces; do
             snap_obj="rados listomapkeys csi.snaps.default --pool="
             uuidfile_snap="rados getomapval csi.snaps.default"
             listsnapobj="rados listomapvals csi.snap."
+            list_group="rbd group ls -p"
+            group_info="rbd group info"
+            group_image="rbd group image ls"
+            group_snap_ls="rbd group snap ls"
+            group_snap_info="rbd group snap info"
+            group_mirror_status="rbd mirror group status"
 
             dbglogf "${CEPH_GATHER_DBGLOG}" "list-rbd: ${list_rbd} ${bp}"
             # Collecting rados object information for RBD PVs and snapshot
@@ -289,7 +342,11 @@ for ns in $namespaces; do
                 UUID=$(oc -n "${ns}" exec "${HOSTNAME}"-helper -- bash -c "cat uuidfile")
                 { timeout 120 oc -n "${ns}" exec "${HOSTNAME}"-helper -- bash -c "${listsnapobj}${UUID} --pool=${bp}" >>"${COMMAND_OUTPUT_FILE}"; } >>"${COMMAND_ERR_OUTPUT_DIR}"/gather-rados-"${snapobj}"-debug.log 2>&1 &
                 pids_ceph+=($!)
-            done         
+            done
+            
+            # Collecting rdb group details
+            dbglogf "${CEPH_GATHER_DBGLOG}" "Collecting group image details  for group: ${bp}"
+            collect_rbd_group_info "$bp"
 
             # Collecting rados object information for RBD PVs and snapshots under each radosnamespace
             rados_namespaces=$(timeout 60 oc -n "${ns}" exec "${HOSTNAME}"-helper -- bash -c "rbd -p $bp namespace ls") 
@@ -339,6 +396,9 @@ for ns in $namespaces; do
                     { timeout 120 oc -n "${ns}" exec "${HOSTNAME}"-helper -- bash -c "${listsnapobj}${UUID} --pool=${bp} --namespace ${rns}" >>"${COMMAND_OUTPUT_FILE}"; } >>"${COMMAND_ERR_OUTPUT_DIR}"/gather-rados-"${snapobj}"-debug.log 2>&1 &
                     pids_ceph+=($!)
                 done
+                # Collecting rdb group details
+                dbglogf "${CEPH_GATHER_DBGLOG}" "Collecting group image info for group: ${bp} ${rns}"
+                collect_rbd_group_info "$bp" "$rns"
             done
         done           
 
