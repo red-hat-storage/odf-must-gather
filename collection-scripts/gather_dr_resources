@@ -53,3 +53,21 @@ for NAMESPACE in "${NAMESPACES[@]}"; do
     # shellcheck disable=SC2086
     { oc describe configmap -n ${NAMESPACE}; } >>"${COMMAND_OUTPUT_FILE}"
 done
+
+# Collect logs for volsync pods from all namespaces
+dbglog "Starting volsync pod logs collection..."
+
+mapfile -t VOLSYNC_PODS < <(oc get pods --all-namespaces -o custom-columns=NAMESPACE:.metadata.namespace,NAME:.metadata.name --no-headers | grep volsync)
+
+for ((i=0; i<${#VOLSYNC_PODS[@]}; i++)); do
+    entry="${VOLSYNC_PODS[i]}"
+    NAMESPACE=$(awk '{print $1}' <<< "$entry")
+    POD_NAME=$(awk '{print $2}' <<< "$entry")
+    
+    dbglog "Collecting logs from pod: ${POD_NAME} in namespace: ${NAMESPACE}"
+
+    LOG_DIR="${BASE_COLLECTION_PATH}/namespaces/volsync_logs/${NAMESPACE}"
+    mkdir -p "${LOG_DIR}"
+
+    { timeout 120 oc logs -n "${NAMESPACE}" --all-containers "${POD_NAME}" &> "${LOG_DIR}/${POD_NAME}.log"; } >> "${BASE_COLLECTION_PATH}/gather-debug.log" 2>&1
+done
