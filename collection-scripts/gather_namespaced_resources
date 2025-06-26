@@ -23,9 +23,6 @@ resources=()
 # collect OB/OBC resources
 resources+=(objectbuckets)
 
-# collection path for OC commands
-mkdir -p "${BASE_COLLECTION_PATH}/oc_output/"
-
 # Command List
 commands_get=()
 
