@@ -41,7 +41,7 @@ if [ ! -f /usr/bin/noobaa ]; then
   exit 1
 fi
 
-mkdir -p "${NOOBAA_COLLLECTION_PATH}/raw_output/}"
+mkdir -p "${NOOBAA_COLLLECTION_PATH}/raw_output/"
 
 # Save the information of all Postgres DBs in the NooBaa DB pod
 dbglog "Collecting MCG database information..."
