@@ -86,6 +86,14 @@ ceph_volume_commands+=("ceph-volume raw list")
 
 # Rados commands
 rados_commands+=("rados lspools")
+rados_commands+=("radosgw-admin bucket stats")
+rados_commands+=("radosgw-admin bucket list")
+rados_commands+=("radosgw-admin realm list")
+rados_commands+=("radosgw-admin realm get")
+rados_commands+=("radosgw-admin zone list")
+rados_commands+=("radosgw-admin zone get")
+rados_commands+=("radosgw-admin zonegroup list")
+rados_commands+=("radosgw-admin zonegroup get")
 rados_commands+=("rados ls --pool=ocs-storagecluster-cephblockpool")
 rados_commands+=("rados ls --pool=ocs-storagecluster-cephfilesystem-metadata --namespace=csi")
 
@@ -109,6 +117,15 @@ for ns in $namespaces; do
         mkdir -p "${COMMAND_ERR_OUTPUT_DIR}"
 
         pids_ceph=()
+
+        # Collecting output of rbd showmapped from the RBD-CSI pods
+        pods=$(oc get pod -l app=csi-rbdplugin -n "${ns}" -o name 2>/dev/null)
+        dbglogf "${CEPH_GATHER_DBGLOG}" "collecting rbd showmapped output for: ${pods}"
+        for pod in $pods; do
+            pod_name="${pod#pod/}"
+            dbglogf "${CEPH_GATHER_DBGLOG}" "collecting rbd showmapped output for: ${pod_name}"
+            { timeout 120 oc exec "${pod}" -n "${ns}" -c csi-rbdplugin -- rbd showmapped >>"${COMMAND_OUTPUT_DIR}/rbd_showmapped_$pod_name"; } >>"${COMMAND_ERR_OUTPUT_DIR}"/gather-rbd-showmapped-"$pod_name"-debug.log 2>&1 &
+        done 
 
         # Collecting output of ceph osd config
         for i in $(timeout 120 oc -n "${ns}" exec "${HOSTNAME}"-helper -- bash -c "ceph osd tree --connect-timeout=15 |  grep up " | awk '{print $4}'); do
@@ -303,6 +320,9 @@ for ns in $namespaces; do
             group_mirror_status="rbd mirror group status"
 
             dbglogf "${CEPH_GATHER_DBGLOG}" "list-rbd: ${list_rbd} ${bp}"
+            # Collecting output for rbd ls command
+            COMMAND_OUTPUT_FILE=${COMMAND_OUTPUT_DIR}/rbd_ls_"${bp}"
+            { timeout 120 oc -n "${ns}" exec "${HOSTNAME}"-helper -- bash -c "${list_rbd} ${bp}" >>"${COMMAND_OUTPUT_FILE}"; } >>"${COMMAND_ERR_OUTPUT_DIR}"/gather-rbd-ls-"${bp}"-debug.log 2>&1 & 
             # Collecting rados object information for RBD PVs and snapshot
             COMMAND_OUTPUT_FILE=${COMMAND_OUTPUT_DIR}/rbd_vol_and_snap_info_"${bp}"   
             printf "Name of the block pool: %s\n" "${bp}" >>"${COMMAND_OUTPUT_FILE}"                             
@@ -357,7 +377,9 @@ for ns in $namespaces; do
             # Collecting rados object information for RBD PVs and snapshots under each radosnamespace
             rados_namespaces=$(timeout 60 oc -n "${ns}" exec "${HOSTNAME}"-helper -- bash -c "rbd -p $bp namespace ls") 
             for rns in $rados_namespaces; do
-                list_rbd_p="${list_rbd} ${bp} --namespace ${rns}"                    
+                list_rbd_p="${list_rbd} ${bp} --namespace ${rns}"
+                COMMAND_OUTPUT_FILE=${COMMAND_OUTPUT_DIR}/rbd_ls_"${bp}"_"${rns}"
+                { timeout 120 oc -n "${ns}" exec "${HOSTNAME}"-helper -- bash -c "${list_rbd_p}" >>"${COMMAND_OUTPUT_FILE}"; } >>"${COMMAND_ERR_OUTPUT_DIR}"/gather-rbd-ls-"${bp}"-"${rns}"-debug.log 2>&1 &                     
                 COMMAND_OUTPUT_FILE=${COMMAND_OUTPUT_DIR}/rbd_vol_and_snap_info_"${bp}"_"${rns}"               
                 dbglogf "${CEPH_GATHER_DBGLOG}" "Collecting image and snap info for images in: ${bp} ${rns} ${list_rbd_p}"
                 images=$(timeout 60 oc -n "${ns}" exec "${HOSTNAME}"-helper -- bash -c "$list_rbd_p")
