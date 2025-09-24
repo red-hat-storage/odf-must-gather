@@ -72,6 +72,12 @@ ceph_commands+=("ceph time-sync-status")
 ceph_commands+=("ceph versions")
 ceph_commands+=("ceph log last 10000 debug cluster")
 ceph_commands+=("ceph log last 10000 debug audit")
+ceph_commands+=("ceph tell mds.ocs-storagecluster-cephfilesystem:0 dump_ops_in_flight")
+ceph_commands+=("ceph tell mds.ocs-storagecluster-cephfilesystem:0 dump_blocked_ops")
+ceph_commands+=("ceph tell mds.ocs-storagecluster-cephfilesystem:0 dump_historic_ops")
+ceph_commands+=("ceph tell mds.ocs-storagecluster-cephfilesystem:0 session ls")
+ceph_commands+=("ceph tell mds.ocs-storagecluster-cephfilesystem:0 client ls")
+ceph_commands+=("ceph tell mds.ocs-storagecluster-cephfilesystem:0 damage ls")
 
 # Ceph volume commands
 ceph_volume_commands+=()
