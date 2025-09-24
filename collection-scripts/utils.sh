@@ -105,8 +105,30 @@ function export_pod_image_details() {
     dbglog "must-gather is using image: $IMAGE"
 }
 
+# cp_nooba_cli copies the nooba CLI from noobaa-operator pod
+# it requires the install namespace of odf-operator to work
+function cp_noobaa_cli() {
+  if [ -z "$1" ]; then
+    echo "Please provide install namespace"
+    exit 1
+  fi
+
+  local pod_name="$(oc get pods -n "$1" | grep noobaa-operator | awk '{ print $1 }')"
+  if [ -z "$pod_name" ]; then
+    echo "failed to find noooba operator pod in namespace $1"
+  else
+    oc -n "$1" rsync "$pod_name":/usr/local/bin/noobaa-operator /tmp
+
+    mv /tmp/noobaa-operator /usr/bin/noobaa
+    chmod +x /usr/bin/noobaa
+
+    echo "successfully copied noobaa CLI to must-gather pod"
+  fi
+}
+
 # Export the functions so that the file needs to be sourced only once
 export -f dbglog
 export -f dbglogf
 export -f parse_since_time
 export -f export_pod_image_details
+export -f cp_noobaa_cli
