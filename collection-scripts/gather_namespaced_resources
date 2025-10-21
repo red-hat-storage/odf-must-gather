@@ -145,7 +145,8 @@ dbglog "collecting output of oc get events with sorted timestamp"
 { oc get event -o custom-columns="LAST SEEN:{lastTimestamp},FIRST SEEN:{firstTimestamp},COUNT:{count},NAME:{metadata.name},KIND:{involvedObject.kind},SUBOBJECT:{involvedObject.fieldPath},TYPE:{type},REASON:{reason},SOURCE:{source.component},MESSAGE:{message}" --sort-by=lastTimestamp -n openshift-storage; } >"${BASE_COLLECTION_PATH}/namespaces/${INSTALL_NAMESPACE}/oc_output/events_get" 2>&1
 events=$(timeout 60 oc get events -n openshift-storage -o custom-columns="NAME:{metadata.name}" --sort-by=lastTimestamp --no-headers)
 for event in $events; do
-     { oc describe events "${event}" -n openshift-storage; } >>"${BASE_COLLECTION_PATH}/namespaces/${INSTALL_NAMESPACE}/oc_output/events_desc"
+     # TODO: customise the describe events output. Currently, it results to increase in collection time.
+     # { oc describe events "${event}" -n openshift-storage; } >>"${BASE_COLLECTION_PATH}/namespaces/${INSTALL_NAMESPACE}/oc_output/events_desc"
      { oc get events "${event}" -n openshift-storage -o yaml; } >>"${BASE_COLLECTION_PATH}/namespaces/${INSTALL_NAMESPACE}/oc_output/events_yaml"
 done
 
