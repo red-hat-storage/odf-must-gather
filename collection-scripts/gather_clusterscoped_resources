@@ -31,6 +31,8 @@ commands_get+=("volumegroupsnapshotclasses.groupsnapshot.storage.k8s.io")
 commands_get+=("volumegroupsnapshotcontents.groupsnapshot.storage.k8s.io")
 commands_get+=("volumegroupsnapshotclasses.groupsnapshot.storage.openshift.io")
 commands_get+=("volumegroupsnapshotcontents.groupsnapshot.storage.openshift.io")
+commands_get+=("networkfences.csiaddons.openshift.io")
+commands_get+=("networkfenceclasses.csiaddons.openshift.io")
 
 # collect yaml output of OC commands
 oc_yamls=()
@@ -57,6 +59,8 @@ oc_yamls+=("volumegroupsnapshotcontents.groupsnapshot.storage.k8s.io")
 oc_yamls+=("volumegroupsnapshotclasses.groupsnapshot.storage.k8s.io")
 oc_yamls+=("volumegroupsnapshotclasses.groupsnapshot.storage.openshift.io")
 oc_yamls+=("volumegroupsnapshotcontents.groupsnapshot.storage.openshift.io")
+oc_yamls+=("networkfences.csiaddons.openshift.io")
+oc_yamls+=("networkfenceclasses.csiaddons.openshift.io")
 
 # collect describe output of OC commands
 commands_desc=()
@@ -83,6 +87,8 @@ commands_desc+=("volumegroupsnapshotcontents.groupsnapshot.storage.k8s.io")
 commands_desc+=("volumegroupsnapshotclasses.groupsnapshot.storage.k8s.io")
 commands_desc+=("volumegroupsnapshotclasses.groupsnapshot.storage.openshift.io")
 commands_desc+=("volumegroupsnapshotcontents.groupsnapshot.storage.openshift.io")
+commands_desc+=("networkfences.csiaddons.openshift.io")
+commands_desc+=("networkfenceclasses.csiaddons.openshift.io")
 
 # collection path for OC commands
 mkdir -p "${BASE_COLLECTION_PATH}/cluster-scoped-resources/oc_output/"
