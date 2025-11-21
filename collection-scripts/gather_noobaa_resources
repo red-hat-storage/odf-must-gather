@@ -24,10 +24,15 @@ noobaa_cli+=("status")
 noobaa_cli+=("obc list")
 
 noobaa_desc=()
-noobaa_desc+=("pod noobaa-db-pg-0")
+# keeping desc for old noobaa-db-pg statefulset to debug upgrade issues
 noobaa_desc+=("statefulset.apps noobaa-db-pg")
+noobaa_desc+=("pod noobaa-db-pg-0")
+noobaa_desc+=("pod noobaa-db-pg-cluster-1")
+noobaa_desc+=("pod noobaa-db-pg-cluster-2")
+noobaa_desc+=("clusters.postgresql.cnpg.noobaa.io noobaa-db-pg-cluster")
 
 cp_noobaa_cli "$INSTALL_NAMESPACE"
+cp_cnpg_cli "$INSTALL_NAMESPACE"
 
 # Bail out early if noobaa CLI is not present
 if [ ! -f /usr/bin/noobaa ]; then
@@ -41,6 +46,31 @@ mkdir -p "${NOOBAA_COLLLECTION_PATH}/raw_output/}"
 # Save the information of all Postgres DBs in the NooBaa DB pod
 dbglog "Collecting MCG database information..."
 oc rsh --namespace "${INSTALL_NAMESPACE}" noobaa-db-pg-0 psql -d nbcore -c '\pset pager off' -c '\list+' -c '\dt+' &>"${NOOBAA_COLLLECTION_PATH}"/raw_output/db_list.txt 2>&1
+
+dbglog "Collecting CNPG cluster information..."
+mkdir -p "${NOOBAA_COLLLECTION_PATH}/cnpg_info/"
+# Get the status of the CNPG cluster
+oc cnpg -n "${INSTALL_NAMESPACE}" status noobaa-db-pg-cluster -vv &>"${NOOBAA_COLLLECTION_PATH}"/cnpg_info/cnpg_cluster_status.txt 2>&1
+# Get the list of databases and tables 
+oc rsh --namespace "${INSTALL_NAMESPACE}" svc/noobaa-db-pg-cluster-rw psql -d nbcore -c '\pset pager off' -c '\list+' -c '\dt+' &>"${NOOBAA_COLLLECTION_PATH}"/raw_output/db_list.txt 2>&1
+# Get from the pg_stat_statements table the top 20 queries by total execution time. get the tables from both pods
+pg_stat_statement_query="SELECT 
+  substring(query, 1, 100) AS short_query,
+  round(total_exec_time::numeric, 2) AS total_exec_time,
+  calls,
+  round(mean_exec_time::numeric, 2) AS mean,
+  round((100 * total_exec_time / sum(total_exec_time::numeric) OVER ())::numeric, 2) AS percentage_cpu 
+FROM pg_stat_statements 
+ORDER BY total_exec_time DESC 
+LIMIT 20;"
+oc rsh --namespace "${INSTALL_NAMESPACE}" pod/noobaa-db-pg-cluster-1 psql -d nbcore -c '\pset pager off' -c "${pg_stat_statement_query}" &>"${NOOBAA_COLLLECTION_PATH}"/cnpg_info/pg_stat_statements-noobaa-db-pg-cluster-1.txt 2>&1
+oc rsh --namespace "${INSTALL_NAMESPACE}" pod/noobaa-db-pg-cluster-2 psql -d nbcore -c '\pset pager off' -c "${pg_stat_statement_query}" &>"${NOOBAA_COLLLECTION_PATH}"/cnpg_info/pg_stat_statements-noobaa-db-pg-cluster-2.txt 2>&1
+# Get the full pg_stat_statements table by descending order of total execution time
+oc rsh --namespace "${INSTALL_NAMESPACE}" pod/noobaa-db-pg-cluster-1 psql -d nbcore -c '\pset pager off' -c 'SELECT * FROM pg_stat_statements ORDER BY total_exec_time DESC;' &>>"${NOOBAA_COLLLECTION_PATH}"/cnpg_info/pg_stat_statements-noobaa-db-pg-cluster-1.txt 2>&1
+oc rsh --namespace "${INSTALL_NAMESPACE}" pod/noobaa-db-pg-cluster-2 psql -d nbcore -c '\pset pager off' -c 'SELECT * FROM pg_stat_statements ORDER BY total_exec_time DESC;' &>>"${NOOBAA_COLLLECTION_PATH}"/cnpg_info/pg_stat_statements-noobaa-db-pg-cluster-2.txt 2>&1
+# Get the operator and cluster reports
+oc cnpg -n "${INSTALL_NAMESPACE}" report operator -l -t -f "${NOOBAA_COLLLECTION_PATH}"/cnpg_info/cnpg_operator_report.zip 2>&1 
+oc cnpg -n "${INSTALL_NAMESPACE}" report cluster noobaa-db-pg-cluster -l -t -f "${NOOBAA_COLLLECTION_PATH}"/cnpg_info/cnpg_cluster_report.zip 2>&1 
 
 # Run the Collection of Noobaa cli using must-gather
 # shellcheck disable=SC2086

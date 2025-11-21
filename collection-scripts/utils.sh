@@ -126,9 +126,31 @@ function cp_noobaa_cli() {
   fi
 }
 
+# cp_cnpg_cli copies the cnpg CLI from cnpg operator pod
+# it requires the install namespace of odf-operator to work
+function cp_cnpg_cli() {
+  if [ -z "$1" ]; then
+    echo "Please provide install namespace"
+    exit 1
+  fi
+
+  local pod_name="$(oc get pods -n "$1" | grep cnpg-controller-manager | awk '{ print $1 }')"
+  if [ -z "$pod_name" ]; then
+    echo "failed to find cnpg operator pod in namespace $1"
+  else
+    oc -n "$1" rsync "$pod_name":/usr/bin/kubectl-cnpg /tmp
+
+    mv /tmp/kubectl-cnpg /usr/bin/kubectl-cnpg
+    chmod +x /usr/bin/kubectl-cnpg
+
+    echo "successfully copied cnpg CLI to must-gather pod"
+  fi
+}
+
 # Export the functions so that the file needs to be sourced only once
 export -f dbglog
 export -f dbglogf
 export -f parse_since_time
 export -f export_pod_image_details
 export -f cp_noobaa_cli
+export -f cp_cnpg_cli
