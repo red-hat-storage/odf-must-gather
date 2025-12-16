@@ -106,6 +106,7 @@ oc_get_all+=("replicationdestinations.volsync.backube")
 oc_get_all+=("restores.velero.io")
 oc_get_all+=("backupstoragelocations.velero.io")
 oc_get_all+=("backups.velero.io")
+oc_get_all+=("templates.template.openshift.io")
 
 for INSTALL_NAMESPACE in $PRODUCT_NAMESPACE $INSTALL_NAMESPACES $MANAGED_FUSION_NAMESPACE $OPERATOR_NAMESPACE; do
      dbglog "collecting dump of namespace ${INSTALL_NAMESPACE}"
