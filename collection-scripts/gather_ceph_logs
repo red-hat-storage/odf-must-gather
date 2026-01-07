@@ -67,7 +67,7 @@ CMDS
         mkdir -p "${CSI_LOG_OUTPUT_DIR}"
         mkdir -p "${JOURNAL_OUTPUT_DIR}"
         mkdir -p "${KERNEL_OUTPUT_DIR}"
-        mkdir -p "${COREDUMP_OUTPUT_DIR}"
+        mkdir -p "${CRASH_OUTPUT_DIR}"
         ceph_daemon_log_collection &
         pids_log+=($!)
         csi_log_collection &
