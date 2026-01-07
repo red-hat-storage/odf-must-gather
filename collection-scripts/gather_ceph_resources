@@ -78,6 +78,7 @@ ceph_commands+=("ceph tell mds.ocs-storagecluster-cephfilesystem:0 dump_historic
 ceph_commands+=("ceph tell mds.ocs-storagecluster-cephfilesystem:0 session ls")
 ceph_commands+=("ceph tell mds.ocs-storagecluster-cephfilesystem:0 client ls")
 ceph_commands+=("ceph tell mds.ocs-storagecluster-cephfilesystem:0 damage ls")
+ceph_commands+=("ceph auth dump-keys")
 
 # Ceph volume commands
 ceph_volume_commands+=()
