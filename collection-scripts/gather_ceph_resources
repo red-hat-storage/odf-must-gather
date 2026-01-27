@@ -87,22 +87,37 @@ ceph_volume_commands+=("ceph-volume raw list")
 
 # Rados commands
 rados_commands+=("rados lspools")
-rados_commands+=("radosgw-admin bucket stats")
-rados_commands+=("radosgw-admin bucket list")
-rados_commands+=("radosgw-admin realm list")
-rados_commands+=("radosgw-admin realm get")
-rados_commands+=("radosgw-admin zone list")
-rados_commands+=("radosgw-admin zone get")
-rados_commands+=("radosgw-admin zonegroup list")
-rados_commands+=("radosgw-admin zonegroup get")
 rados_commands+=("rados ls --pool=ocs-storagecluster-cephblockpool")
 rados_commands+=("rados ls --pool=ocs-storagecluster-cephfilesystem-metadata --namespace=csi")
+
+rgw_commands+=("radosgw-admin bucket list")
+rgw_commands+=("radosgw-admin bucket stats")
+rgw_commands+=("radosgw-admin realm list")
+rgw_commands+=("radosgw-admin realm get")
+rgw_commands+=("radosgw-admin zone list")
+rgw_commands+=("radosgw-admin zone get")
+rgw_commands+=("radosgw-admin zonegroup list")
+rgw_commands+=("radosgw-admin zonegroup get")
 
 # Inspecting ceph related custom resources for all namespaces
 for resource in "${ceph_resources[@]}"; do
     dbglog "collecting dump ${resource}"
     { oc adm inspect --dest-dir="${CEPH_COLLECTION_PATH}" --all-namespaces ${LOG_FILTER_ARGS:+"${LOG_FILTER_ARGS}"} "${resource}" 2>&1; } | dbglog
 done
+
+count=$(oc get cephobjectstores --all-namespaces --no-headers 2>/dev/null | wc -l)
+if [ "$count" -gt 0 ]; then
+    # Collecting output of rados commands
+    rgwstore=$(oc get cephobjectstores --all-namespaces --no-headers | awk '{print $2}')
+    for store in $rgwstore; do
+        for ((i = 0; i < ${#rgw_commands[@]}; i++)); do
+            dbglogf "${CEPH_GATHER_DBGLOG}" "collecting command output for: ${rgw_commands[$i]}"
+            COMMAND_OUTPUT_FILE=${COMMAND_OUTPUT_DIR}/${rgw_commands[$i]// /_}
+            { timeout 120 oc -n "${ns}" exec "${HOSTNAME}"-helper -- bash -c "${rgw_commands[$i]} --rgw-realm=$store --rgw-zonegroup=$store --rgw-zone=$store" >>"${COMMAND_OUTPUT_FILE}"; } >>"${COMMAND_ERR_OUTPUT_DIR}"/gather-"${rgw_commands[$i]}"-debug.log 2>&1 &
+            pids_ceph+=($!)
+        done
+    done
+fi
 
 namespaces=$(oc get deploy --all-namespaces -o go-template --template='{{range .items}}{{if .metadata.labels}}{{printf "%s %v" .metadata.namespace (index .metadata.labels "olm.owner")}} {{printf "\n"}}{{end}}{{end}}' | grep ocs-operator | awk '{print $1}' | uniq)
 namespaces+=" openshift-storage-extended"
