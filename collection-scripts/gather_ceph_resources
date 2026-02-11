@@ -87,16 +87,18 @@ ceph_volume_commands+=("ceph-volume raw list")
 
 # Rados commands
 rados_commands+=("rados lspools")
-rados_commands+=("radosgw-admin bucket stats")
-rados_commands+=("radosgw-admin bucket list")
-rados_commands+=("radosgw-admin realm list")
-rados_commands+=("radosgw-admin realm get")
-rados_commands+=("radosgw-admin zone list")
-rados_commands+=("radosgw-admin zone get")
-rados_commands+=("radosgw-admin zonegroup list")
-rados_commands+=("radosgw-admin zonegroup get")
 rados_commands+=("rados ls --pool=ocs-storagecluster-cephblockpool")
 rados_commands+=("rados ls --pool=ocs-storagecluster-cephfilesystem-metadata --namespace=csi")
+
+# RGW commands
+rgw_commands+=("radosgw-admin bucket list")
+rgw_commands+=("radosgw-admin bucket stats")
+rgw_commands+=("radosgw-admin realm list")
+rgw_commands+=("radosgw-admin realm get")
+rgw_commands+=("radosgw-admin zone list")
+rgw_commands+=("radosgw-admin zone get")
+rgw_commands+=("radosgw-admin zonegroup list")
+rgw_commands+=("radosgw-admin zonegroup get")
 
 # Inspecting ceph related custom resources for all namespaces
 for resource in "${ceph_resources[@]}"; do
@@ -105,20 +107,42 @@ for resource in "${ceph_resources[@]}"; do
 done
 
 namespaces=$(oc get deploy --all-namespaces -o go-template --template='{{range .items}}{{if .metadata.labels}}{{printf "%s %v" .metadata.namespace (index .metadata.labels "olm.owner")}} {{printf "\n"}}{{end}}{{end}}' | grep ocs-operator | awk '{print $1}' | uniq)
-namespaces+=" openshift-storage-extended"
+# Only add if ns is present
+if oc get namespace openshift-storage-extended >/dev/null 2>&1; then
+    namespaces+=" openshift-storage-extended"
+fi
+
 # Inspecting the namespace where ocs-cluster is installed
 for ns in $namespaces; do
     dbglog "collecting details of ns ${ns}"
+
+    # Setup directories for command output
+    COMMAND_OUTPUT_DIR=${CEPH_COLLECTION_PATH}/must_gather_commands
+    COMMAND_JSON_OUTPUT_DIR=${CEPH_COLLECTION_PATH}/must_gather_commands_json_output
+    COMMAND_ERR_OUTPUT_DIR=${CEPH_COLLECTION_PATH}/logs
+    mkdir -p "${COMMAND_OUTPUT_DIR}"
+    mkdir -p "${COMMAND_JSON_OUTPUT_DIR}"
+    mkdir -p "${COMMAND_ERR_OUTPUT_DIR}"
+
+    # To track active PIDs
+    pids_ceph=()
+
+    objc=$(oc get cephobjectstores --all-namespaces --no-headers 2>/dev/null | wc -l)
+    if [ "$objc" -gt 0 ]; then
+        # Collecting output of rados commands
+        dbglog "collecting output of rados commands"
+        rgwstore=$(oc get cephobjectstores --all-namespaces --no-headers | awk '{print $2}')
+        for store in $rgwstore; do
+            for ((i = 0; i < ${#rgw_commands[@]}; i++)); do
+                dbglogf "${CEPH_GATHER_DBGLOG}" "collecting command output for: ${rgw_commands[$i]}"
+                COMMAND_OUTPUT_FILE=${COMMAND_OUTPUT_DIR}/${rgw_commands[$i]// /_}
+                { timeout 120 oc -n "${ns}" exec "${HOSTNAME}"-helper -- bash -c "${rgw_commands[$i]} --rgw-realm=$store --rgw-zonegroup=$store --rgw-zone=$store" >>"${COMMAND_OUTPUT_FILE}"; } >>"${COMMAND_ERR_OUTPUT_DIR}"/gather-"${rgw_commands[$i]}"-debug.log 2>&1 &
+                pids_ceph+=($!)
+            done
+        done
+    fi
+
     ceph_collection() {
-        COMMAND_OUTPUT_DIR=${CEPH_COLLECTION_PATH}/must_gather_commands
-        COMMAND_JSON_OUTPUT_DIR=${CEPH_COLLECTION_PATH}/must_gather_commands_json_output
-        COMMAND_ERR_OUTPUT_DIR=${CEPH_COLLECTION_PATH}/logs
-        mkdir -p "${COMMAND_OUTPUT_DIR}"
-        mkdir -p "${COMMAND_JSON_OUTPUT_DIR}"
-        mkdir -p "${COMMAND_ERR_OUTPUT_DIR}"
-
-        pids_ceph=()
-
         # Collecting output of rbd showmapped from the RBD-CSI pods
         pods=$(oc get pod -l app=csi-rbdplugin -n "${ns}" -o name 2>/dev/null)
         dbglogf "${CEPH_GATHER_DBGLOG}" "collecting rbd showmapped output for: ${pods}"
