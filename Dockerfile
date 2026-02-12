@@ -1,4 +1,4 @@
-FROM registry.ci.openshift.org/ocp/4.17:cli
+FROM registry.ci.openshift.org/ocp/4.20:cli
 
 WORKDIR /usr/bin
 COPY collection-scripts .
