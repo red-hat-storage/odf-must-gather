@@ -26,7 +26,7 @@ done
 
 # Special handling for storageclusters
 dbglog "Collecting storageclusters"
-{ oc get storageclusters --all-namespaces -o yaml; } > "${MINIMAL_COLLECTION_PATH}/oc_output/storageclusters.yaml" 2>&1
+{ oc get storageclusters.ocs.openshift.io --all-namespaces -o yaml; } > "${MINIMAL_COLLECTION_PATH}/oc_output/storageclusters.yaml" 2>&1
 
 # Final message indicating completion
 dbglog "Minimal resources collection completed."
