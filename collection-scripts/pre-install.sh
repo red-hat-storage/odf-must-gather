@@ -23,9 +23,9 @@ apply_helper_pod() {
 nodes=$(oc get nodes --no-headers | awk '/\yworker\y/{print $1}')
 
 # storing storagecluster name
-storageClusterPresent=$(oc get storagecluster -n "${ns}" -o go-template='{{range .items}}{{.metadata.name}}{{"\n"}}{{end}}')
+storageClusterPresent=$(oc get storageclusters.ocs.openshift.io -n "${ns}" -o go-template='{{range .items}}{{.metadata.name}}{{"\n"}}{{end}}')
 # checking for mcg standalone cluster
-reconcileStrategy=$(oc get storagecluster -n "${ns}" -o go-template='{{range .items}}{{.spec.multiCloudGateway.reconcileStrategy}}{{"\n"}}{{end}}')
+reconcileStrategy=$(oc get storageclusters.ocs.openshift.io -n "${ns}" -o go-template='{{range .items}}{{.spec.multiCloudGateway.reconcileStrategy}}{{"\n"}}{{end}}')
 deploy() {
     operatorImage=$(oc get pods -l app=rook-ceph-operator -n "${ns}" -o jsonpath="{range .items[*]}{@.spec.containers[0].image}+{end}" | tr "+" "\n" | head -n1)
     if [ -z "${storageClusterPresent}" ]; then
