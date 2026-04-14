@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+
+# Expect base collection path as an exported variable
+# If it is not defined, use PWD instead
+BASE_COLLECTION_PATH=${BASE_COLLECTION_PATH:-"$(pwd)"}
+CNSA_COLLECTION_PATH="${BASE_COLLECTION_PATH}/cnsa"
+
+# The image to use for CNSA (can be overridden via build arg in Dockerfile)
+# If not present, the default value is set below.
+# Must-gather when running from its image will ALWAYS have this value set.
+CNSA_MG_IMAGE="${CNSA_MG_IMAGE:-"icr.io/cpopen/ibm-spectrum-scale-must-gather:v6.0.1.0"}"
+
+# Only continue if scale CRDs are present in the cluster
+if ! oc get clusters.scale.spectrum.ibm.com ibm-spectrum-scale >/dev/null 2>&1; then
+    echo "Scale cluster CRDs not detected in the cluster, exiting.."
+    exit 1
+fi
+
+# Make the directory
+mkdir -p "$CNSA_COLLECTION_PATH"
+
+# Simply run the MG and capture output at BASE_COLLECTION_PATH + CNSA
+oc adm must-gather \
+    --image="${CNSA_MG_IMAGE}" \
+    --dest-dir "$CNSA_COLLECTION_PATH"

@@ -1,5 +1,9 @@
 FROM registry.ci.openshift.org/ocp/4.20:cli
 
+# Allow CNSA must-gather image to be specified at the build time
+ARG CNSA_MG_IMAGE="icr.io/cpopen/ibm-spectrum-scale-must-gather:v6.0.1.0"
+ENV CNSA_MG_IMAGE="${CNSA_MG_IMAGE}"
+
 WORKDIR /usr/bin
 COPY collection-scripts .
 
