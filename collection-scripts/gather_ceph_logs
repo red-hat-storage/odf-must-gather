@@ -17,6 +17,11 @@ for ns in $namespaces; do
         oc rsync -n "${ns}" "$(oc get pods -n "${ns}" --no-headers | grep "${node//./}-debug" | awk '{print $1}')":/host/var/lib/rook/"${ns}"/log "${CEPH_DAEMON_LOG_OUTPUT_DIR}"
     }
 
+    ceph_kernel_log_collection() {
+        dbglog "collecting Ceph kernel logs from node ${node}"
+        oc rsync -n "${ns}" "$(oc get pods -n "${ns}" --no-headers | grep "${node//./}-debug" | awk '{print $1}')":/host/var/tmp/ceph_kernel_debug_"${node}"/ceph "${CEPH_KERNEL_LOG_OUTPUT_DIR}"
+    }
+
     # Collecting csi and ceph daemon logs
     csi_log_collection() {
         dbglog "collecting csi and ceph daemon logs from node ${node}"
@@ -51,6 +56,8 @@ for ns in $namespaces; do
             cd var/log
             journalctl --since "${JCTL_FILTER_ARGS}" | gzip > journal_"${node}".gz
             journalctl --since "${JCTL_FILTER_ARGS}" -k -o short-iso-precise --utc --no-hostname | gzip > kernel_"${node}".gz
+            mkdir -p /var/tmp/ceph_kernel_debug_"${node}"
+            cp -r /sys/kernel/debug/ceph /var/tmp/ceph_kernel_debug_"${node}"/ceph
             exit
 CMDS
     done
@@ -63,11 +70,13 @@ CMDS
         CSI_LOG_OUTPUT_DIR=${CEPH_COLLECTION_PATH}/csi_log_${node}
         JOURNAL_OUTPUT_DIR=${CEPH_COLLECTION_PATH}/journal_${node}
         KERNEL_OUTPUT_DIR=${CEPH_COLLECTION_PATH}/kernel_${node}
+        CEPH_KERNEL_LOG_OUTPUT_DIR=${CEPH_COLLECTION_PATH}/ceph_kernel_log_${node}
         mkdir -p "${CEPH_DAEMON_LOG_OUTPUT_DIR}"
         mkdir -p "${CSI_LOG_OUTPUT_DIR}"
         mkdir -p "${JOURNAL_OUTPUT_DIR}"
         mkdir -p "${KERNEL_OUTPUT_DIR}"
         mkdir -p "${CRASH_OUTPUT_DIR}"
+        mkdir -p "${CEPH_KERNEL_LOG_OUTPUT_DIR}"
         ceph_daemon_log_collection &
         pids_log+=($!)
         csi_log_collection &
@@ -77,6 +86,8 @@ CMDS
         journal_collection &
         pids_log+=($!)
         crash_collection &
+        pids_log+=($!)
+        ceph_kernel_log_collection &
         pids_log+=($!)
         if [ -n "${pids_log[*]}" ]; then
             # wait for all pids
@@ -89,6 +100,7 @@ CMDS
             cd var/log
             rm -rf journal_"${node}".gz
             rm -rf kernel_"${node}".gz
+            rm -rf /var/tmp/ceph_kernel_debug_"${node}"
             exit
 CMDS
     done
