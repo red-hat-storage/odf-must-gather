@@ -23,11 +23,6 @@ spec:
         secretKeyRef:
           key: ceph-username
           name: rook-ceph-mon
-    - name: ROOK_CEPH_SECRET
-      valueFrom:
-        secretKeyRef:
-          name: rook-ceph-mon
-          key: ceph-secret
     image: IMAGE_NAME
     imagePullPolicy: Always
     name: must-gather-helper
@@ -47,6 +42,9 @@ spec:
         name: libmodules
       - name: mon-endpoint-volume
         mountPath: /etc/rook
+      - name: ceph-admin-secret
+        mountPath: /var/lib/rook-ceph-mon
+        readOnly: true
   volumes:
     - name: dev
       hostPath:
@@ -63,5 +61,12 @@ spec:
         items:
         - key: data
           path: mon-endpoints
+    - name: ceph-admin-secret
+      secret:
+        secretName: rook-ceph-mon
+        optional: false
+        items:
+        - key: ceph-secret
+          path: secret.keyring
     - name: ceph-config
       emptyDir: {}
